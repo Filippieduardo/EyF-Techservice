@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  TECNICO
+}
+
+enum EstadoOrden {
+  INGRESADO
+  EN_DIAGNOSTICO
+  ESPERANDO_REPUESTO
+  EN_REPARACION
+  TERMINADO
+  ENTREGADO
+  NO_REPARABLE
+  CANCELADO
+}
+
+enum TipoEquipo {
+  IMPRESORA_LASER
+  IMPRESORA_INKJET
+  IMPRESORA_MATRICIAL
+  PLOTTER
+  NOTEBOOK
+  NETBOOK
+  PC
+  TABLET
+  OTRO
+}
+
+enum EstadoPresupuesto {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  VENCIDO
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  AJUSTE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nombre    String
+  role      UserRole @default(TECNICO)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ordenes           OrdenTrabajo[]
+  movimientosStock  MovimientoStock[]
+  historialEstados  HistorialEstado[]
+}
+
+model Cliente {
+  id              String   @id @default(cuid())
+  nombre          String
+  email           String?  @unique
+  telefono        String?
+  dniCuit         String?
+  direccion       String?
+  portalPassword  String?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ordenes       OrdenTrabajo[]
+  presupuestos  Presupuesto[]
+}
+
+model Marca {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  ordenes          OrdenTrabajo[]
+  compatibilidades RepuestoCompatibilidad[]
+}
+
+model OrdenTrabajo {
+  id               String      @id @default(cuid())
+  numero           String      @unique
+  fechaIngreso     DateTime    @default(now())
+  fechaEstimada    DateTime?
+  fechaCierre      DateTime?
+  estado           EstadoOrden @default(INGRESADO)
+  tipoEquipo       TipoEquipo
+  marcaId          String?
+  modelo           String?
+  numeroSerie      String?
+  descripcionProblema String
+  diagnostico      String?
+  trabajoRealizado String?
+  notasInternas    String?
+  observacionesCliente String?
+  costoTecnico     Decimal?    @db.Decimal(10, 2)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  clienteId        String
+  tecnicoId        String?
+  presupuestoId    String?     @unique
+
+  cliente          Cliente         @relation(fields: [clienteId], references: [id])
+  tecnico          User?           @relation(fields: [tecnicoId], references: [id])
+  marca            Marca?          @relation(fields: [marcaId], references: [id])
+  presupuesto      Presupuesto?    @relation(fields: [presupuestoId], references: [id])
+  historial        HistorialEstado[]
+  repuestosUsados  OrdenRepuesto[]
+}
+
+model HistorialEstado {
+  id          String      @id @default(cuid())
+  estado      EstadoOrden
+  nota        String?
+  createdAt   DateTime    @default(now())
+
+  ordenId     String
+  userId      String?
+
+  orden       OrdenTrabajo  @relation(fields: [ordenId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
+}
+
+model Presupuesto {
+  id           String            @id @default(cuid())
+  numero       String            @unique
+  fecha        DateTime          @default(now())
+  validezDias  Int               @default(30)
+  estado       EstadoPresupuesto @default(PENDIENTE)
+  subtotal     Decimal           @db.Decimal(10, 2) @default(0)
+  descuento    Decimal           @db.Decimal(10, 2) @default(0)
+  total        Decimal           @db.Decimal(10, 2) @default(0)
+  notas        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  clienteId    String
+  cliente      Cliente           @relation(fields: [clienteId], references: [id])
+  items        PresupuestoItem[]
+  orden        OrdenTrabajo?
+}
+
+model PresupuestoItem {
+  id             String   @id @default(cuid())
+  descripcion    String
+  cantidad       Int      @default(1)
+  precioUnitario Decimal  @db.Decimal(10, 2)
+  precioTotal    Decimal  @db.Decimal(10, 2)
+
+  presupuestoId  String
+  repuestoId     String?
+
+  presupuesto    Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  repuesto       Repuesto?   @relation(fields: [repuestoId], references: [id])
+}
+
+model Categoria {
+  id        String     @id @default(cuid())
+  nombre    String     @unique
+  activa    Boolean    @default(true)
+  orden     Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  repuestos Repuesto[]
+}
+
+model Repuesto {
+  id              String    @id @default(cuid())
+  codigoInterno   String?   @unique
+  numeroParte     String?
+  descripcion     String
+  categoriaId     String?
+  stockActual     Int       @default(0)
+  stockMinimo     Int       @default(1)
+  precioCosto     Decimal   @db.Decimal(10, 2) @default(0)
+  precioVenta     Decimal   @db.Decimal(10, 2) @default(0)
+  activo          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  categoria        Categoria?              @relation(fields: [categoriaId], references: [id])
+  compatibilidades RepuestoCompatibilidad[]
+  movimientos      MovimientoStock[]
+  presupuestoItems PresupuestoItem[]
+  ordenesUsado     OrdenRepuesto[]
+}
+
+model RepuestoCompatibilidad {
+  id            String     @id @default(cuid())
+  tipoEquipo    TipoEquipo
+  modelo        String?
+  numeroParteOem String?
+  notas         String?
+
+  repuestoId    String
+  marcaId       String?
+
+  repuesto      Repuesto @relation(fields: [repuestoId], references: [id], onDelete: Cascade)
+  marca         Marca?   @relation(fields: [marcaId], references: [id])
+}
+
+model OrdenRepuesto {
+  id         String   @id @default(cuid())
+  cantidad   Int      @default(1)
+  descontado Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  ordenId    String
+  repuestoId String
+
+  orden    OrdenTrabajo @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  repuesto Repuesto     @relation(fields: [repuestoId], references: [id])
+}
+
+model MovimientoStock {
+  id            String         @id @default(cuid())
+  tipo          TipoMovimiento
+  cantidad      Int
+  precioUnitario Decimal?      @db.Decimal(10, 2)
+  referencia    String?
+  notas         String?
+  createdAt     DateTime       @default(now())
+
+  repuestoId    String
+  userId        String?
+  ordenId       String?
+
+  repuesto      Repuesto @relation(fields: [repuestoId], references: [id])
+  user          User?    @relation(fields: [userId], references: [id])
+}
