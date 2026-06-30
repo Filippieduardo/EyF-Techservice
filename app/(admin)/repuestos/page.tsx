@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search, Package, AlertTriangle, Settings } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { TIPOS_EQUIPO, formatCurrency } from "@/lib/constants";
 import { MarcaSelect } from "@/components/marca-select";
 
@@ -35,6 +36,8 @@ const emptyForm = {
 };
 
 export default function RepuestosPage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [q, setQ] = useState("");
@@ -97,9 +100,11 @@ export default function RepuestosPage() {
           <p className="text-gray-500 text-sm">{repuestos.length} repuestos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/categorias">
-            <Button variant="outline" size="sm"><Settings className="h-4 w-4 mr-1" />Categorías</Button>
-          </Link>
+          {isAdmin && (
+            <Link href="/categorias">
+              <Button variant="outline" size="sm"><Settings className="h-4 w-4 mr-1" />Categorías</Button>
+            </Link>
+          )}
 
           <Dialog open={buscarOpen} onOpenChange={setBuscarOpen}>
             <Button variant="outline" onClick={() => setBuscarOpen(true)}><Search className="h-4 w-4 mr-2" />Buscar Compatibles</Button>
@@ -159,7 +164,7 @@ export default function RepuestosPage() {
             </DialogContent>
           </Dialog>
 
-          <Dialog open={open} onOpenChange={setOpen}>
+          {isAdmin && <Dialog open={open} onOpenChange={setOpen}>
             <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />Nuevo Repuesto</Button>
             <DialogContent className="max-w-md">
               <DialogHeader><DialogTitle>Nuevo Repuesto</DialogTitle></DialogHeader>
@@ -215,7 +220,7 @@ export default function RepuestosPage() {
                 <Button type="submit" className="w-full">Crear Repuesto</Button>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
       </div>
 

@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
       data: { nombre: nombre.trim() },
     });
     return NextResponse.json(categoria, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Ya existe una categoría con ese nombre" }, { status: 409 });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      return NextResponse.json({ error: "Ya existe una categoría con ese nombre" }, { status: 409 });
+    }
+    return NextResponse.json({ error: e?.message ?? "Error interno" }, { status: 500 });
   }
 }

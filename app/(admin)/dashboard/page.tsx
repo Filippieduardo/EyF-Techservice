@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     prisma.ordenTrabajo.count({ where: { estado: "TERMINADO" } }),
     prisma.cliente.count({ where: { activo: true } }),
     prisma.repuesto.findMany({
-      where: { activo: true, stockActual: { lte: prisma.repuesto.fields.stockMinimo } },
+      where: { activo: true, stockActual: { lte: 5 } },
       take: 5,
       orderBy: { stockActual: "asc" },
     }),

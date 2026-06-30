@@ -28,7 +28,7 @@ export const proxy = auth((req) => {
       return NextResponse.redirect(new URL("/login", req.url));
     }
     if (
-      (pathname.startsWith("/usuarios") || pathname.startsWith("/presupuestos")) &&
+      (pathname.startsWith("/usuarios") || pathname.startsWith("/presupuestos") || pathname.startsWith("/categorias")) &&
       (session.user as any).role !== "ADMIN"
     ) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -45,6 +45,7 @@ export const config = {
     "/clientes/:path*",
     "/ordenes/:path*",
     "/presupuestos/:path*",
+    "/categorias/:path*",
     "/repuestos/:path*",
     "/usuarios/:path*",
     "/portal/:path*",
