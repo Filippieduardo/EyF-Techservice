@@ -150,18 +150,20 @@ export default function PortalPage() {
                       {o.observacionesCliente}
                     </div>
                   )}
-                  {o.diagnostico && (
-                    <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800">
-                      <p className="font-semibold text-xs text-gray-500 mb-1">Diagnóstico:</p>
-                      {o.diagnostico}
-                    </div>
-                  )}
-                  {o.trabajoRealizado && (
-                    <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-900">
-                      <p className="font-semibold text-xs text-green-600 mb-1">Trabajo Realizado:</p>
-                      {o.trabajoRealizado}
-                    </div>
-                  )}
+                  <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800">
+                    <p className="font-semibold text-xs text-gray-500 mb-1">Diagnóstico:</p>
+                    {o.diagnostico
+                      ? <span>{o.diagnostico}</span>
+                      : <span className="text-gray-400 italic">Sin diagnóstico registrado</span>
+                    }
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-900">
+                    <p className="font-semibold text-xs text-green-600 mb-1">Trabajo Realizado:</p>
+                    {o.trabajoRealizado
+                      ? <span>{o.trabajoRealizado}</span>
+                      : <span className="text-green-700 italic opacity-60">Sin trabajo registrado aún</span>
+                    }
+                  </div>
                   {o.historial.length > 0 && (
                     <div>
                       <p className="text-xs font-semibold text-gray-500 mb-2 uppercase">Historial reciente:</p>
