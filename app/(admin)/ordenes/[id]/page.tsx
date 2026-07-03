@@ -161,11 +161,6 @@ export default function OrdenDetailPage() {
   }
 
   async function handleSave() {
-    // TECNICO solo puede guardar si el presupuesto está aprobado
-    if (!isAdmin && orden?.presupuesto?.estado !== "APROBADO") {
-      toast.error("Solo podés modificar la orden cuando el presupuesto esté aprobado");
-      return;
-    }
     setSaving(true);
     const body = {
       ...form,
@@ -192,8 +187,8 @@ export default function OrdenDetailPage() {
 
   async function handleCambioEstado() {
     if (!estadoForm.estado) return;
-    if (!isAdmin && orden?.presupuesto?.estado !== "APROBADO") {
-      toast.error("Solo podés cambiar el estado cuando el presupuesto esté aprobado");
+    if (tecnicoBlocked) {
+      toast.error("Necesitás un presupuesto generado para cambiar el estado");
       return;
     }
     const res = await fetch(`/api/ordenes/${id}`, {
@@ -215,7 +210,8 @@ export default function OrdenDetailPage() {
   const estadoActual = getEstadoOrden(orden.estado);
   const presupuestada = !!orden.presupuesto;
   const presupuestoAceptado = orden.presupuesto?.estado === "APROBADO";
-  const tecnicoBlocked = !isAdmin && !presupuestoAceptado;
+  // TECNICO bloqueado en secciones Estado/Asignación/Repuestos si NO hay presupuesto generado
+  const tecnicoBlocked = !isAdmin && !orden.presupuesto;
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
@@ -238,7 +234,7 @@ export default function OrdenDetailPage() {
               <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" />Presupuesto</Button>
             </Link>
           )}
-          <Button onClick={handleSave} disabled={saving || tecnicoBlocked} title={tecnicoBlocked ? "Presupuesto no aprobado" : ""}>
+          <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
           </Button>
         </div>
@@ -251,7 +247,7 @@ export default function OrdenDetailPage() {
           <span className="font-medium">{formatDate(orden.fechaIngreso)}</span>
         </div>
         <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
-          <span className="text-gray-500">Fecha envío:</span>
+          <span className="text-gray-500">Fecha traslado:</span>
           <span className="font-medium">{orden.fechaEnvio ? formatDate(orden.fechaEnvio) : "—"}</span>
         </div>
         <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
@@ -277,7 +273,7 @@ export default function OrdenDetailPage() {
 
       {tecnicoBlocked && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded px-4 py-2">
-          ⚠️ No podés modificar esta orden hasta que el presupuesto esté aprobado.
+          ⚠️ Sin presupuesto generado — no podés cambiar estado, fechas ni repuestos. Podés editar los datos del equipo y diagnóstico.
         </div>
       )}
 
@@ -288,7 +284,8 @@ export default function OrdenDetailPage() {
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>Tipo de Equipo</Label>
-                <Select value={form.tipoEquipo} onValueChange={v => setForm({ ...form, tipoEquipo: v })} disabled={tecnicoBlocked}>
+                <Select value={form.tipoEquipo} onValueChange={v => setForm({ ...form, tipoEquipo: v })}>
+
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {TIPOS_EQUIPO.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -297,16 +294,16 @@ export default function OrdenDetailPage() {
               </div>
               <div className="space-y-1">
                 <Label>Marca</Label>
-                <MarcaSelect value={form.marcaId} onValueChange={v => setForm({ ...form, marcaId: v })} disabled={tecnicoBlocked} />
+                <MarcaSelect value={form.marcaId} onValueChange={v => setForm({ ...form, marcaId: v })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Modelo</Label>
-                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} disabled={tecnicoBlocked} />
+                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} />
                 </div>
                 <div className="space-y-1">
                   <Label>Número de Serie</Label>
-                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value })} disabled={tecnicoBlocked} />
+                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value })} />
                 </div>
               </div>
             </CardContent>
@@ -317,24 +314,24 @@ export default function OrdenDetailPage() {
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>Problema Reportado</Label>
-                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value })} rows={2} disabled={tecnicoBlocked} />
+                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value })} rows={2} />
               </div>
               <div className="space-y-1">
                 <Label>Diagnóstico</Label>
-                <Textarea value={form.diagnostico} onChange={e => setForm({ ...form, diagnostico: e.target.value })} rows={2} placeholder="Diagnóstico técnico..." disabled={tecnicoBlocked} />
+                <Textarea value={form.diagnostico} onChange={e => setForm({ ...form, diagnostico: e.target.value })} rows={2} placeholder="Diagnóstico técnico..." />
               </div>
               <div className="space-y-1">
                 <Label>Trabajo Realizado</Label>
-                <Textarea value={form.trabajoRealizado} onChange={e => setForm({ ...form, trabajoRealizado: e.target.value })} rows={2} placeholder="Detalle del trabajo..." disabled={tecnicoBlocked} />
+                <Textarea value={form.trabajoRealizado} onChange={e => setForm({ ...form, trabajoRealizado: e.target.value })} rows={2} placeholder="Detalle del trabajo..." />
               </div>
               <Separator />
               <div className="space-y-1">
                 <Label className="text-orange-600">🔒 Notas Internas (solo técnicos)</Label>
-                <Textarea value={form.notasInternas} onChange={e => setForm({ ...form, notasInternas: e.target.value })} rows={2} className="border-orange-200" disabled={tecnicoBlocked} />
+                <Textarea value={form.notasInternas} onChange={e => setForm({ ...form, notasInternas: e.target.value })} rows={2} className="border-orange-200" />
               </div>
               <div className="space-y-1">
                 <Label className="text-green-600">👤 Observaciones para el Cliente</Label>
-                <Textarea value={form.observacionesCliente} onChange={e => setForm({ ...form, observacionesCliente: e.target.value })} rows={2} className="border-green-200" placeholder="Visible en el portal del cliente..." disabled={tecnicoBlocked} />
+                <Textarea value={form.observacionesCliente} onChange={e => setForm({ ...form, observacionesCliente: e.target.value })} rows={2} className="border-green-200" placeholder="Visible en el portal del cliente..." />
               </div>
               {isAdmin && (
                 <div className="space-y-1">
@@ -389,7 +386,7 @@ export default function OrdenDetailPage() {
                 <Input type="date" value={form.fechaEstimada} onChange={e => setForm({ ...form, fechaEstimada: e.target.value })} disabled={tecnicoBlocked} />
               </div>
               <div className="space-y-1">
-                <Label>Fecha de Envío</Label>
+                <Label>Fecha Traslado</Label>
                 <Input type="date" value={form.fechaEnvio} onChange={e => setForm({ ...form, fechaEnvio: e.target.value })} disabled={tecnicoBlocked} />
               </div>
               <div className="space-y-1">

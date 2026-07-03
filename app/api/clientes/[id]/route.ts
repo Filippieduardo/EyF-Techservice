@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -50,9 +49,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const updateData: any = { ...data };
   if (data.email === "") updateData.email = null;
 
-  if (data.portalPassword) {
-    updateData.portalPassword = await bcrypt.hash(data.portalPassword, 10);
-  } else {
+  if (!data.portalPassword) {
     delete updateData.portalPassword;
   }
 

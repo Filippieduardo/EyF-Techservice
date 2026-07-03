@@ -49,11 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
         });
         if (!cliente || !cliente.portalPassword) return null;
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          cliente.portalPassword
-        );
-        if (!valid) return null;
+        if (credentials.password !== cliente.portalPassword) return null;
         return {
           id: cliente.id,
           email: cliente.email ?? "",

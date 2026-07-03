@@ -18,7 +18,6 @@ export async function GET() {
   }
 
   const usuarios = await prisma.user.findMany({
-    where: { activo: true },
     orderBy: { nombre: "asc" },
     select: { id: true, nombre: true, email: true, role: true, activo: true, createdAt: true },
   });
@@ -33,13 +32,19 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const data = userSchema.parse(body);
+  const data = userSchema.parse({ ...body, email: body.email?.toLowerCase() });
 
-  const hash = await bcrypt.hash(data.password, 10);
-  const user = await prisma.user.create({
-    data: { ...data, password: hash },
-    select: { id: true, nombre: true, email: true, role: true },
-  });
-
-  return NextResponse.json(user, { status: 201 });
+  try {
+    const hash = await bcrypt.hash(data.password, 10);
+    const user = await prisma.user.create({
+      data: { ...data, password: hash },
+      select: { id: true, nombre: true, email: true, role: true },
+    });
+    return NextResponse.json(user, { status: 201 });
+  } catch (e: any) {
+    if (e?.code === "P2002") {
+      return NextResponse.json({ error: "Usuario existente" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Error al crear usuario" }, { status: 500 });
+  }
 }

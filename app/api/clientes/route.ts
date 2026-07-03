@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const clienteSchema = z.object({
@@ -49,11 +48,6 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const data = clienteSchema.parse(body);
 
-  let portalPassword: string | undefined;
-  if (data.portalPassword) {
-    portalPassword = await bcrypt.hash(data.portalPassword, 10);
-  }
-
   const cliente = await prisma.cliente.create({
     data: {
       nombre: data.nombre,
@@ -61,7 +55,7 @@ export async function POST(req: NextRequest) {
       telefono: data.telefono || null,
       dniCuit: data.dniCuit || null,
       direccion: data.direccion || null,
-      portalPassword: portalPassword ?? null,
+      portalPassword: data.portalPassword || null,
     },
   });
 

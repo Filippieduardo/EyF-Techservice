@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { signOut } from "@/auth";
-import { LogOut, Wrench } from "lucide-react";
+import { LogOut, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -21,17 +22,25 @@ export default async function PortalLayout({ children }: { children: React.React
               )}
             </div>
           </div>
-          {isCliente && (
-            <form action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/portal/login" });
-            }}>
-              <button type="submit" className="flex items-center gap-1 text-sm hover:text-white transition-colors" style={{ color: "oklch(0.85 0.05 292)" }}>
-                <LogOut className="h-4 w-4" />
-                Salir
-              </button>
-            </form>
-          )}
+          <div className="flex items-center gap-3">
+            {!isCliente && (
+              <Link href="/portal/login" className="flex items-center gap-1 text-sm hover:text-white transition-colors" style={{ color: "oklch(0.85 0.05 292)" }}>
+                <ArrowLeft className="h-4 w-4" />
+                Iniciar sesión
+              </Link>
+            )}
+            {isCliente && (
+              <form action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/portal/login" });
+              }}>
+                <button type="submit" className="flex items-center gap-1 text-sm hover:text-white transition-colors" style={{ color: "oklch(0.85 0.05 292)" }}>
+                  <LogOut className="h-4 w-4" />
+                  Salir
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </header>
       <main className="max-w-4xl mx-auto px-4 py-6">
