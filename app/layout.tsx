@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TechService - Sistema de Servicio Técnico",
+  title: "EyF-TechService - Sistema de Servicio Técnico",
   description: "Gestión de servicio técnico de impresoras y computadoras",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TechService",
+    title: "EyF-TechService",
   },
   icons: {
     icon: "/icons/icon-192.png",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#6D4FA0",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

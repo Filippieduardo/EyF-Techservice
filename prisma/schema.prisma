@@ -48,6 +48,11 @@ enum TipoMovimiento {
   AJUSTE
 }
 
+enum UbicacionActual {
+  LOCAL
+  TALLER
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -93,8 +98,10 @@ model OrdenTrabajo {
   id               String      @id @default(cuid())
   numero           String      @unique
   fechaIngreso     DateTime    @default(now())
+  fechaEnvio       DateTime?
   fechaEstimada    DateTime?
   fechaCierre      DateTime?
+  ubicacionActual  UbicacionActual @default(LOCAL)
   estado           EstadoOrden @default(INGRESADO)
   tipoEquipo       TipoEquipo
   marcaId          String?

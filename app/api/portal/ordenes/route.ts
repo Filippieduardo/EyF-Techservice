@@ -33,6 +33,8 @@ export async function GET() {
     fechaIngreso: o.fechaIngreso,
     fechaEstimada: o.fechaEstimada,
     observacionesCliente: o.observacionesCliente,
+    diagnostico: o.diagnostico,
+    trabajoRealizado: o.trabajoRealizado,
     historial: o.historial,
     presupuestoId: o.presupuestoId,
   }));

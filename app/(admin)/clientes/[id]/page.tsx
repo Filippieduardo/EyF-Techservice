@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Edit2, Save, X, Plus } from "lucide-react";
+import { ArrowLeft, Edit2, Save, X, Plus, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getEstadoOrden, getTipoEquipo, formatDate } from "@/lib/constants";
@@ -44,6 +44,7 @@ export default function ClienteDetailPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   async function fetch() {
     const res = await window.fetch(`/api/clientes/${id}`);
@@ -117,7 +118,22 @@ export default function ClienteDetailPage() {
                   <Input value={form.direccion} onChange={e => setForm({...form, direccion: e.target.value})} /></div>
                 <div className="space-y-1">
                   <Label>Nueva contraseña portal</Label>
-                  <Input type="password" value={form.portalPassword ?? ""} onChange={e => setForm({...form, portalPassword: e.target.value})} placeholder="Dejar vacío para no cambiar" />
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={form.portalPassword ?? ""}
+                      onChange={e => setForm({ ...form, portalPassword: e.target.value })}
+                      placeholder="Dejar vacío para no cambiar"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                      onClick={() => setShowPassword(s => !s)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

@@ -17,6 +17,8 @@ const updateSchema = z.object({
   costoTecnico: z.number().nullable().optional(),
   tecnicoId: z.string().nullable().optional(),
   fechaEstimada: z.string().nullable().optional(),
+  fechaEnvio: z.string().nullable().optional(),
+  ubicacionActual: z.string().optional(),
   notaEstado: z.string().optional(),
 });
 
@@ -74,6 +76,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ...(data.costoTecnico !== undefined && { costoTecnico: data.costoTecnico }),
     ...(data.tecnicoId !== undefined && { tecnicoId: data.tecnicoId }),
     ...(data.fechaEstimada !== undefined && { fechaEstimada: data.fechaEstimada ? new Date(data.fechaEstimada) : null }),
+    ...(data.fechaEnvio !== undefined && { fechaEnvio: data.fechaEnvio ? new Date(data.fechaEnvio) : null }),
+    ...(data.ubicacionActual !== undefined && { ubicacionActual: data.ubicacionActual as any }),
   };
 
   const estadoCambia = data.estado && data.estado !== orden.estado;

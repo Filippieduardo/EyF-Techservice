@@ -1,6 +1,6 @@
 {
-  "name": "TechService - Servicio Técnico",
-  "short_name": "TechService",
+  "name": "EyF-TechService - Servicio Técnico",
+  "short_name": "EyF-TechService",
   "description": "Sistema de gestión de servicio técnico de impresoras y computadoras",
   "start_url": "/",
   "display": "standalone",

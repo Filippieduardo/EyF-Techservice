@@ -15,9 +15,10 @@ interface MarcaSelectProps {
   value: string;
   onValueChange: (value: string | null) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar marca" }: MarcaSelectProps) {
+export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar marca", disabled }: MarcaSelectProps) {
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [adding, setAdding] = useState(false);
   const [nuevaMarca, setNuevaMarca] = useState("");
@@ -73,7 +74,7 @@ export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar m
 
   return (
     <div className="flex gap-2">
-      <Select value={value} onValueChange={onValueChange}>
+      <Select value={value} onValueChange={onValueChange} disabled={disabled}>
         <SelectTrigger className="flex-1">
           <SelectValue placeholder={placeholder}>{displayValue}</SelectValue>
         </SelectTrigger>
@@ -82,9 +83,11 @@ export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar m
           {marcas.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
         </SelectContent>
       </Select>
-      <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)} title="Agregar nueva marca">
-        <Plus className="h-4 w-4" />
-      </Button>
+      {!disabled && (
+        <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)} title="Agregar nueva marca">
+          <Plus className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
