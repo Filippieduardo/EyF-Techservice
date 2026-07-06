@@ -256,7 +256,7 @@ export default function RepuestosPage() {
                         <span className={`font-bold ${stockBajo ? "text-red-600" : "text-green-600"}`}>{r.stockActual}</span>
                         <span className="text-gray-400">/ mín {r.stockMinimo}</span>
                       </div>
-                      <span className="text-gray-500">{formatCurrency(r.precioVenta)}</span>
+                      <span className="text-gray-500 text-xs">{formatCurrency(r.precioVenta)}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <Badge variant="secondary" className="text-xs">{r.categoria?.nombre ?? "Sin categoría"}</Badge>

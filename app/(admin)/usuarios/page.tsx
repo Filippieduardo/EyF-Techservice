@@ -17,6 +17,7 @@ interface Usuario {
   role: string;
   activo: boolean;
   createdAt: string;
+  password: string;
 }
 
 const emptyForm = { nombre: "", email: "", password: "", role: "TECNICO" };
@@ -58,7 +59,7 @@ export default function UsuariosPage() {
 
   function openEdit(u: Usuario) {
     setEditUser(u);
-    setEditForm({ nombre: u.nombre, email: u.email, role: u.role, password: "" });
+    setEditForm({ nombre: u.nombre, email: u.email, role: u.role, password: u.password });
     setShowEditPwd(false);
     setEditOpen(true);
   }

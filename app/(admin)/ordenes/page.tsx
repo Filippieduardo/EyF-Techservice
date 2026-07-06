@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Search, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ESTADOS_ORDEN, TIPOS_EQUIPO, getEstadoOrden, getTipoEquipo, formatDate } from "@/lib/constants";
 
 interface Orden {
@@ -15,12 +16,17 @@ interface Orden {
   tipoEquipo: string;
   modelo: string | null;
   fechaIngreso: string;
+  fechaEnvio: string | null;
+  ubicacionActual: string;
+  presupuestoId: string | null;
   cliente: { id: string; nombre: string };
   tecnico: { nombre: string } | null;
   marca: { nombre: string } | null;
 }
 
 export default function OrdenesPage() {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [ordenes, setOrdenes] = useState<Orden[]>([]);
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("all");
@@ -32,11 +38,17 @@ export default function OrdenesPage() {
     if (q) params.set("q", q);
     if (estado && estado !== "all") params.set("estado", estado);
     const res = await fetch(`/api/ordenes?${params}`);
-    setOrdenes(await res.json());
+    let data: Orden[] = await res.json();
+    if (!isAdmin) {
+      data = data.filter(o => o.ubicacionActual === "TALLER" && o.fechaEnvio !== null);
+    }
+    // Entregadas: ordenadas por fechaEnvio asc; resto: por fechaIngreso asc
+    data.sort((a, b) => new Date(a.fechaIngreso).getTime() - new Date(b.fechaIngreso).getTime());
+    setOrdenes(data);
     setLoading(false);
   }
 
-  useEffect(() => { fetchOrdenes(); }, [q, estado]);
+  useEffect(() => { fetchOrdenes(); }, [q, estado, isAdmin]);
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
@@ -74,42 +86,60 @@ export default function OrdenesPage() {
           <p>No hay órdenes</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {ordenes.map((o) => {
-            const estado = getEstadoOrden(o.estado);
-            return (
-              <Link key={o.id} href={`/ordenes/${o.id}`}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="py-3">
-                    <div className="flex items-center gap-4">
-                      <div className="w-32 flex-shrink-0">
-                        <p className="font-mono font-semibold text-sm">{o.numero}</p>
-                        <p className="text-xs text-gray-400">{formatDate(o.fechaIngreso)}</p>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{o.cliente.nombre}</p>
-                        <p className="text-xs text-gray-500">
-                          {getTipoEquipo(o.tipoEquipo)}
-                          {o.marca ? ` · ${o.marca.nombre}` : ""}
-                          {o.modelo ? ` ${o.modelo}` : ""}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {o.tecnico && (
-                          <p className="text-xs text-gray-400 hidden md:block">{o.tecnico.nombre}</p>
-                        )}
-                        <span className={`text-xs px-3 py-1 rounded-full font-medium ${estado.color}`}>
-                          {estado.label}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+        <div className="space-y-6">
+          <OrdenGrilla titulo="ENTREGADAS" ordenes={ordenes.filter(o => o.estado === "ENTREGADO").sort((a, b) => new Date(a.fechaEnvio ?? a.fechaIngreso).getTime() - new Date(b.fechaEnvio ?? b.fechaIngreso).getTime())} />
+          <OrdenGrilla titulo="EN CURSO" ordenes={ordenes.filter(o => o.estado !== "ENTREGADO")} />
         </div>
       )}
+    </div>
+  );
+}
+
+function OrdenGrilla({ titulo, ordenes }: { titulo: string; ordenes: Orden[] }) {
+  if (ordenes.length === 0) return null;
+  return (
+    <div>
+      <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{titulo} ({ordenes.length})</h2>
+      <div className="space-y-2">
+        {ordenes.map((o) => {
+          const estado = getEstadoOrden(o.estado);
+          return (
+            <Link key={o.id} href={`/ordenes/${o.id}`}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="py-3">
+                  <div className="flex items-center gap-4">
+                    <div className="w-32 flex-shrink-0">
+                      <p className="font-mono font-semibold text-sm">{o.numero}</p>
+                      <p className="text-xs text-gray-400">{formatDate(o.fechaIngreso)}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{o.cliente.nombre}</p>
+                      <p className="text-xs text-gray-500">
+                        {getTipoEquipo(o.tipoEquipo)}
+                        {o.marca ? ` · ${o.marca.nombre}` : ""}
+                        {o.modelo ? ` ${o.modelo}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {o.tecnico && (
+                        <p className="text-xs text-gray-400 hidden md:block">{o.tecnico.nombre}</p>
+                      )}
+                      <span className={`text-sm px-3 py-1 rounded font-bold ${
+                        o.ubicacionActual === "TALLER" ? "bg-red-600 text-white" : "bg-green-600 text-white"
+                      }`}>
+                        {o.ubicacionActual === "TALLER" ? "TALLER" : "LOCAL"}
+                      </span>
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${estado.color}`}>
+                        {estado.label}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

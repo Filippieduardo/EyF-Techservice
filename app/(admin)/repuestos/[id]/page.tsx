@@ -81,7 +81,7 @@ export default function RepuestoDetailPage() {
     });
     setSaving(false);
     if (res.ok) { toast.success("Guardado"); fetchRepuesto(); }
-    else toast.error("Error al guardar");
+    else { const err = await res.json(); toast.error(err.error ?? "Error al guardar"); }
   }
 
   async function handleMovimiento() {
@@ -132,7 +132,7 @@ export default function RepuestoDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{repuesto.descripcion}</h1>
-          <p className="text-gray-500 text-sm">{repuesto.numeroParte ?? "Sin número de parte"}</p>
+          <p className="text-base font-bold text-foreground">{repuesto.numeroParte ?? <span className="text-gray-400 font-normal text-sm">Sin número de parte</span>}</p>
         </div>
         {isAdmin && (
           <Button onClick={handleSave} disabled={saving}>
@@ -140,7 +140,9 @@ export default function RepuestoDetailPage() {
           </Button>
         )}
         {!isAdmin && (
-          <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">Solo consulta</Badge>
+          <div className="px-4 py-2 rounded-lg border-2 border-amber-400 bg-amber-100 text-amber-800 font-bold text-base shadow-sm">
+            SOLO CONSULTA
+          </div>
         )}
       </div>
 
@@ -185,18 +187,38 @@ export default function RepuestoDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${isAdmin ? "grid-cols-3" : "grid-cols-2"}`}>
                 <div className="space-y-1">
                   <Label>Stock Mínimo</Label>
                   <Input type="number" min={0} value={editForm.stockMinimo ?? 0} onChange={e => setEditForm({ ...editForm, stockMinimo: Number(e.target.value) })} disabled={!isAdmin} />
                 </div>
-                <div className="space-y-1">
-                  <Label>Precio Costo</Label>
-                  <Input type="number" min={0} step="0.01" value={editForm.precioCosto ?? 0} onChange={e => setEditForm({ ...editForm, precioCosto: Number(e.target.value) })} disabled={!isAdmin} />
-                </div>
+                {isAdmin && (
+                  <div className="space-y-1">
+                    <Label>Precio Costo</Label>
+                    <Input
+                      className="text-right"
+                      placeholder="$ 0,00"
+                      value={editForm._costEditing ? editForm.precioCosto : formatCurrency(editForm.precioCosto ?? 0)}
+                      onFocus={() => setEditForm((f: any) => ({ ...f, _costEditing: true }))}
+                      onBlur={() => setEditForm((f: any) => ({ ...f, _costEditing: false }))}
+                      onChange={e => setEditForm((f: any) => ({ ...f, precioCosto: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0 }))}
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <Label>Precio Venta</Label>
-                  <Input type="number" min={0} step="0.01" value={editForm.precioVenta ?? 0} onChange={e => setEditForm({ ...editForm, precioVenta: Number(e.target.value) })} disabled={!isAdmin} />
+                  {isAdmin ? (
+                    <Input
+                      className="text-right"
+                      placeholder="$ 0,00"
+                      value={editForm._ventaEditing ? editForm.precioVenta : formatCurrency(editForm.precioVenta ?? 0)}
+                      onFocus={() => setEditForm((f: any) => ({ ...f, _ventaEditing: true }))}
+                      onBlur={() => setEditForm((f: any) => ({ ...f, _ventaEditing: false }))}
+                      onChange={e => setEditForm((f: any) => ({ ...f, precioVenta: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0 }))}
+                    />
+                  ) : (
+                    <p className="border rounded px-3 py-2 text-sm font-medium">{formatCurrency(editForm.precioVenta ?? 0)}</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -211,7 +233,7 @@ export default function RepuestoDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setCompatOpen(true)}
-                      style={{ background: "oklch(0.42 0.14 292)", color: "white" }}
+                      style={{ background: "oklch(0.55 0.10 220)", color: "white", border: "2px solid oklch(0.42 0.10 220)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
                     >
                       <Plus className="h-3 w-3 mr-1" />Agregar
                     </Button>
@@ -286,7 +308,7 @@ export default function RepuestoDetailPage() {
                     <Button
                       size="sm"
                       onClick={() => setMovOpen(true)}
-                      style={{ background: "oklch(0.42 0.14 292)", color: "white" }}
+                      style={{ background: "oklch(0.55 0.10 220)", color: "white", border: "2px solid oklch(0.42 0.10 220)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}
                     >
                       <Plus className="h-3 w-3 mr-1" />Movimiento
                     </Button>
@@ -326,10 +348,12 @@ export default function RepuestoDetailPage() {
                 {stockBajo && <Badge variant="destructive" className="mt-2">Stock Bajo</Badge>}
               </div>
               <div className="mt-3 text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Costo:</span>
-                  <span>{formatCurrency(repuesto.precioCosto)}</span>
-                </div>
+                {isAdmin && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Costo:</span>
+                    <span>{formatCurrency(repuesto.precioCosto)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Venta:</span>
                   <span className="font-medium">{formatCurrency(repuesto.precioVenta)}</span>

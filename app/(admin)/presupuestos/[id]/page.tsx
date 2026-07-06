@@ -72,7 +72,7 @@ export default function PresupuestoDetailPage() {
             <span className={`text-sm px-3 py-1 rounded-full font-medium ${estadoInfo.color}`}>{estadoInfo.label}</span>
           </div>
           <p className="text-gray-500 text-sm">
-            {pres.cliente.nombre} · {formatDate(pres.fecha)} · Válido {pres.validezDias} días
+            {pres.cliente.nombre} · <strong>{formatDate(pres.fecha)}</strong> · Válido <strong>{pres.validezDias} días</strong>
           </p>
         </div>
         <div className="flex gap-2">
@@ -115,6 +115,12 @@ export default function PresupuestoDetailPage() {
                 <Separator />
                 <div className="flex justify-between font-bold text-base">
                   <span>Total:</span><span>{formatCurrency(pres.total)}</span>
+                </div>
+                <div className="flex justify-between text-gray-600 text-sm">
+                  <span>IVA 21%:</span><span>{formatCurrency(Number(pres.total) * 0.21)}</span>
+                </div>
+                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                  <span>Total General:</span><span>{formatCurrency(Number(pres.total) * 1.21)}</span>
                 </div>
               </div>
               {pres.notas && (

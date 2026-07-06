@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,8 +30,11 @@ interface Orden {
   diagnostico: string | null;
   trabajoRealizado: string | null;
   notasInternas: string | null;
+  notaEstado: string | null;
   observacionesCliente: string | null;
   costoTecnico: number | null;
+  presupuestoAbonado: number;
+  presupuestoId: string | null;
   fechaIngreso: string;
   fechaEnvio: string | null;
   fechaEstimada: string | null;
@@ -62,7 +65,8 @@ export default function OrdenDetailPage() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [estadoForm, setEstadoForm] = useState({ estado: "", nota: "" });
+  const [estadoForm, setEstadoForm] = useState({ estado: "", nota: "", fechaEntrega: "" });
+  const fechaEntregaRef = useRef<HTMLInputElement>(null);
   const [repuestosUsados, setRepuestosUsados] = useState<RepuestoItem[]>([]);
   const [repuestoSearch, setRepuestoSearch] = useState("");
   const [repuestoResults, setRepuestoResults] = useState<RepuestoSearch[]>([]);
@@ -84,6 +88,8 @@ export default function OrdenDetailPage() {
       notasInternas: data.notasInternas ?? "",
       observacionesCliente: data.observacionesCliente ?? "",
       costoTecnico: data.costoTecnico ?? "",
+      presupuestoAbonado: data.presupuestoAbonado ?? 0,
+      notaEstado: data.notaEstado ?? "",
       tecnicoId: data.tecnico?.id ?? "",
       fechaEstimada: data.fechaEstimada ? data.fechaEstimada.split("T")[0] : "",
       fechaEnvio: data.fechaEnvio ? data.fechaEnvio.split("T")[0] : "",
@@ -161,15 +167,30 @@ export default function OrdenDetailPage() {
   }
 
   async function handleSave() {
+    // Si el estado cambió a ENTREGADO y no tiene fecha, bloquear
+    const estadoCambia = estadoForm.estado && estadoForm.estado !== orden?.estado;
+    if (estadoCambia && estadoForm.estado === "ENTREGADO" && !estadoForm.fechaEntrega) {
+      toast.error("Ingresar fecha de entrega");
+      fechaEntregaRef.current?.focus();
+      return;
+    }
     setSaving(true);
-    const body = {
+    const body: any = {
       ...form,
       marcaId: form.marcaId === "none" ? null : form.marcaId || null,
       tecnicoId: form.tecnicoId === "none" ? null : form.tecnicoId || null,
       costoTecnico: form.costoTecnico !== "" ? Number(form.costoTecnico) : null,
+      presupuestoAbonado: Number(form.presupuestoAbonado) || 0,
       fechaEstimada: form.fechaEstimada || null,
       fechaEnvio: form.fechaEnvio || null,
     };
+    // Incluir cambio de estado si fue modificado en el selector
+    if (estadoCambia) {
+      body.estado = estadoForm.estado;
+      if (estadoForm.estado === "ENTREGADO" && estadoForm.fechaEntrega) {
+        body.fechaCierre = estadoForm.fechaEntrega;
+      }
+    }
     const res = await fetch(`/api/ordenes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -191,10 +212,21 @@ export default function OrdenDetailPage() {
       toast.error("Necesitás un presupuesto generado para cambiar el estado");
       return;
     }
+    if (estadoForm.estado === "ENTREGADO" && !estadoForm.fechaEntrega) {
+      toast.error("Ingresar fecha de entrega");
+      fechaEntregaRef.current?.focus();
+      return;
+    }
     const res = await fetch(`/api/ordenes/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: estadoForm.estado, notaEstado: estadoForm.nota }),
+      body: JSON.stringify({
+        estado: estadoForm.estado,
+        notaEstado: form.notaEstado,
+        ...(estadoForm.estado === "ENTREGADO" && estadoForm.fechaEntrega
+          ? { fechaCierre: estadoForm.fechaEntrega }
+          : {}),
+      }),
     });
     if (res.ok) {
       toast.success("Estado actualizado");
@@ -211,7 +243,7 @@ export default function OrdenDetailPage() {
   const presupuestada = !!orden.presupuesto;
   const presupuestoAceptado = orden.presupuesto?.estado === "APROBADO";
   // TECNICO bloqueado en secciones Estado/Asignación/Repuestos si NO hay presupuesto generado
-  const tecnicoBlocked = !isAdmin && !orden.presupuesto;
+  const tecnicoBlocked = !isAdmin && !orden.presupuesto && !orden.presupuestoId;
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
@@ -257,18 +289,14 @@ export default function OrdenDetailPage() {
             {form.ubicacionActual === "TALLER" ? "Taller" : "Local"}
           </span>
         </div>
-        <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
-          <span className="text-gray-500">Presupuestada:</span>
-          <span className={`font-medium ${presupuestada ? "text-green-600" : "text-gray-400"}`}>
-            {presupuestada ? "SÍ" : "NO"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
-          <span className="text-gray-500">Presupuesto aceptado:</span>
-          <span className={`font-medium ${presupuestoAceptado ? "text-green-600" : "text-red-500"}`}>
-            {presupuestoAceptado ? "SÍ" : "NO"}
-          </span>
-        </div>
+        {presupuestada && (
+          <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
+            <span className="text-gray-500">Presupuesto:</span>
+            <span className={`font-medium ${presupuestoAceptado ? "text-green-600" : "text-yellow-600"}`}>
+              {orden.presupuesto!.estado}
+            </span>
+          </div>
+        )}
       </div>
 
       {tecnicoBlocked && (
@@ -294,7 +322,7 @@ export default function OrdenDetailPage() {
               </div>
               <div className="space-y-1">
                 <Label>Marca</Label>
-                <MarcaSelect value={form.marcaId} onValueChange={v => setForm({ ...form, marcaId: v })} />
+                <MarcaSelect value={form.marcaId} onValueChange={v => setForm({ ...form, marcaId: v })} hideAdd={!isAdmin} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -314,31 +342,53 @@ export default function OrdenDetailPage() {
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>Problema Reportado</Label>
-                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value })} rows={2} />
+                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value.toUpperCase() })} rows={2} />
               </div>
               <div className="space-y-1">
                 <Label>Diagnóstico</Label>
-                <Textarea value={form.diagnostico} onChange={e => setForm({ ...form, diagnostico: e.target.value })} rows={2} placeholder="Diagnóstico técnico..." />
+                <Textarea value={form.diagnostico} onChange={e => setForm({ ...form, diagnostico: e.target.value.toUpperCase() })} rows={2} placeholder="Diagnóstico técnico..." />
               </div>
               <div className="space-y-1">
                 <Label>Trabajo Realizado</Label>
-                <Textarea value={form.trabajoRealizado} onChange={e => setForm({ ...form, trabajoRealizado: e.target.value })} rows={2} placeholder="Detalle del trabajo..." />
+                <Textarea value={form.trabajoRealizado} onChange={e => setForm({ ...form, trabajoRealizado: e.target.value.toUpperCase() })} rows={2} placeholder="Detalle del trabajo..." />
               </div>
               <Separator />
               <div className="space-y-1">
                 <Label className="text-orange-600">🔒 Notas Internas (solo técnicos)</Label>
-                <Textarea value={form.notasInternas} onChange={e => setForm({ ...form, notasInternas: e.target.value })} rows={2} className="border-orange-200" />
+                <Textarea value={form.notasInternas} onChange={e => setForm({ ...form, notasInternas: e.target.value.toUpperCase() })} rows={2} className="border-orange-200" />
               </div>
               <div className="space-y-1">
                 <Label className="text-green-600">👤 Observaciones para el Cliente</Label>
-                <Textarea value={form.observacionesCliente} onChange={e => setForm({ ...form, observacionesCliente: e.target.value })} rows={2} className="border-green-200" placeholder="Visible en el portal del cliente..." />
+                <Textarea value={form.observacionesCliente} onChange={e => setForm({ ...form, observacionesCliente: e.target.value.toUpperCase() })} rows={2} className="border-green-200" placeholder="Visible en el portal del cliente..." />
               </div>
-              {isAdmin && (
-                <div className="space-y-1">
-                  <Label className="flex items-center gap-1"><DollarSign className="h-3 w-3 text-orange-600" />Costo Técnico (interno)</Label>
-                  <Input type="number" step="0.01" value={form.costoTecnico} onChange={e => setForm({ ...form, costoTecnico: e.target.value })} placeholder="0.00" className="max-w-40" />
-                </div>
-              )}
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1 text-orange-700 font-semibold text-sm"><DollarSign className="h-4 w-4 text-orange-600" />Costo Técnico (interno)</Label>
+                {isAdmin ? (
+                  <Input
+                    className="max-w-48 text-lg font-bold border-orange-300 focus:border-orange-500"
+                    placeholder="$ 0,00"
+                    value={form.costoTecnico === "" ? "" : form._costoEditing ? form.costoTecnico : formatCurrency(form.costoTecnico || 0)}
+                    onFocus={() => setForm((f: any) => ({ ...f, _costoEditing: true }))}
+                    onBlur={() => setForm((f: any) => ({ ...f, _costoEditing: false }))}
+                    onChange={e => setForm((f: any) => ({ ...f, costoTecnico: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
+                  />
+                ) : (
+                  <p className="text-xl font-bold text-orange-700 border border-orange-200 rounded px-3 py-2 bg-orange-50 max-w-48">
+                    {form.costoTecnico ? formatCurrency(form.costoTecnico) : <span className="text-gray-400 text-base font-normal">Sin costo</span>}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label className="flex items-center gap-1"><DollarSign className="h-3 w-3 text-blue-600" />Presupuesto Abonado</Label>
+                <Input
+                  className="max-w-40"
+                  placeholder="$ 0,00"
+                  value={form._abonadoEditing ? form.presupuestoAbonado : formatCurrency(form.presupuestoAbonado || 0)}
+                  onFocus={() => setForm((f: any) => ({ ...f, _abonadoEditing: true }))}
+                  onBlur={() => setForm((f: any) => ({ ...f, _abonadoEditing: false }))}
+                  onChange={e => setForm((f: any) => ({ ...f, presupuestoAbonado: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -349,7 +399,13 @@ export default function OrdenDetailPage() {
             <CardContent className="space-y-3">
               <Select
                 value={estadoForm.estado}
-                onValueChange={v => setEstadoForm({ ...estadoForm, estado: v ?? estadoForm.estado })}
+                onValueChange={v => {
+                  const nuevo = v ?? estadoForm.estado;
+                  setEstadoForm(f => ({ ...f, estado: nuevo }));
+                  if (nuevo === "ENTREGADO") {
+                    setTimeout(() => fechaEntregaRef.current?.focus(), 50);
+                  }
+                }}
                 disabled={tecnicoBlocked}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -357,7 +413,22 @@ export default function OrdenDetailPage() {
                   {ESTADOS_ORDEN.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Textarea value={estadoForm.nota} onChange={e => setEstadoForm({ ...estadoForm, nota: e.target.value })} placeholder="Nota del cambio..." rows={2} disabled={tecnicoBlocked} />
+              {estadoForm.estado === "ENTREGADO" && (
+                <div className="space-y-1">
+                  <Label className="text-sky-700 font-semibold flex items-center gap-1">
+                    <span className="text-base">📅</span> Ingresar fecha de entrega
+                  </Label>
+                  <Input
+                    ref={fechaEntregaRef}
+                    type="date"
+                    value={estadoForm.fechaEntrega}
+                    onChange={e => setEstadoForm(f => ({ ...f, fechaEntrega: e.target.value }))}
+                    className="border-sky-400 ring-2 ring-sky-200 focus:ring-sky-400"
+                    disabled={tecnicoBlocked}
+                  />
+                </div>
+              )}
+              <Textarea value={form.notaEstado ?? ""} onChange={e => setForm({ ...form, notaEstado: e.target.value.toUpperCase() })} placeholder="Nota del cambio..." rows={2} disabled={tecnicoBlocked} />
               <Button size="sm" onClick={handleCambioEstado} className="w-full" disabled={tecnicoBlocked}>Cambiar Estado</Button>
             </CardContent>
           </Card>

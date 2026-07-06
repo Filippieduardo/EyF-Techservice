@@ -15,11 +15,13 @@ const updateSchema = z.object({
   notasInternas: z.string().optional(),
   observacionesCliente: z.string().optional(),
   costoTecnico: z.number().nullable().optional(),
+  presupuestoAbonado: z.number().optional(),
   tecnicoId: z.string().nullable().optional(),
   fechaEstimada: z.string().nullable().optional(),
   fechaEnvio: z.string().nullable().optional(),
+  fechaCierre: z.string().nullable().optional(),
   ubicacionActual: z.string().optional(),
-  notaEstado: z.string().optional(),
+  notaEstado: z.string().nullable().optional(),
 });
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -78,6 +80,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ...(data.fechaEstimada !== undefined && { fechaEstimada: data.fechaEstimada ? new Date(data.fechaEstimada) : null }),
     ...(data.fechaEnvio !== undefined && { fechaEnvio: data.fechaEnvio ? new Date(data.fechaEnvio) : null }),
     ...(data.ubicacionActual !== undefined && { ubicacionActual: data.ubicacionActual as any }),
+    ...(data.presupuestoAbonado !== undefined && { presupuestoAbonado: data.presupuestoAbonado }),
+    ...(data.notaEstado !== undefined && { notaEstado: data.notaEstado || null }),
   };
 
   const estadoCambia = data.estado && data.estado !== orden.estado;
@@ -85,11 +89,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (estadoCambia) {
     updateData.estado = data.estado as any;
     if (data.estado === "ENTREGADO" || data.estado === "NO_REPARABLE" || data.estado === "CANCELADO") {
-      updateData.fechaCierre = new Date();
+      updateData.fechaCierre = data.fechaCierre ? new Date(data.fechaCierre) : new Date();
     }
+  }
+
+  if (estadoCambia || data.notaEstado) {
     updateData.historial = {
       create: {
-        estado: data.estado as any,
+        estado: (estadoCambia ? data.estado : orden.estado) as any,
         nota: data.notaEstado || null,
         userId,
       },
@@ -97,35 +104,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const updated = await prisma.ordenTrabajo.update({ where: { id }, data: updateData });
-
-  // Al pasar a TERMINADO: descontar del stock los repuestos utilizados
-  if (estadoCambia && data.estado === "TERMINADO") {
-    const repuestosUsados = await prisma.ordenRepuesto.findMany({
-      where: { ordenId: id, descontado: false },
-    });
-    for (const item of repuestosUsados) {
-      await prisma.$transaction([
-        prisma.repuesto.update({
-          where: { id: item.repuestoId },
-          data: { stockActual: { decrement: item.cantidad } },
-        }),
-        prisma.movimientoStock.create({
-          data: {
-            tipo: "SALIDA",
-            cantidad: item.cantidad,
-            repuestoId: item.repuestoId,
-            ordenId: id,
-            userId,
-            notas: `Usado en orden ${updated.numero}`,
-          },
-        }),
-        prisma.ordenRepuesto.update({
-          where: { id: item.id },
-          data: { descontado: true },
-        }),
-      ]);
-    }
-  }
 
   return NextResponse.json(updated);
 }

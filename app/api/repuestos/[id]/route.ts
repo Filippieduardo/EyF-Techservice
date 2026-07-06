@@ -44,20 +44,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = await req.json();
 
-  const repuesto = await prisma.repuesto.update({
-    where: { id },
-    data: {
-      ...(body.descripcion && { descripcion: body.descripcion }),
-      ...(body.numeroParte !== undefined && { numeroParte: body.numeroParte }),
-      ...(body.codigoInterno !== undefined && { codigoInterno: body.codigoInterno }),
-      ...(body.categoriaId !== undefined && { categoriaId: body.categoriaId || null }),
-      ...(body.stockMinimo !== undefined && { stockMinimo: body.stockMinimo }),
-      ...(body.precioCosto !== undefined && { precioCosto: body.precioCosto }),
-      ...(body.precioVenta !== undefined && { precioVenta: body.precioVenta }),
-    },
-  });
-
-  return NextResponse.json(repuesto);
+  try {
+    const repuesto = await prisma.repuesto.update({
+      where: { id },
+      data: {
+        ...(body.descripcion !== undefined && { descripcion: body.descripcion || "" }),
+        ...(body.numeroParte !== undefined && { numeroParte: body.numeroParte || null }),
+        ...(body.codigoInterno !== undefined && { codigoInterno: body.codigoInterno || null }),
+        ...(body.categoriaId !== undefined && { categoriaId: body.categoriaId || null }),
+        ...(body.stockMinimo !== undefined && { stockMinimo: Number(body.stockMinimo) }),
+        ...(body.precioCosto !== undefined && { precioCosto: Number(body.precioCosto) }),
+        ...(body.precioVenta !== undefined && { precioVenta: Number(body.precioVenta) }),
+      },
+    });
+    return NextResponse.json(repuesto);
+  } catch (e: any) {
+    console.error("PUT /api/repuestos/[id] error:", e);
+    return NextResponse.json({ error: e.message ?? "Error al guardar" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

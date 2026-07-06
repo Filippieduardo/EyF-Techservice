@@ -79,17 +79,18 @@ export default function ClienteDetailPage() {
       telefono: data.telefono ?? "",
       dniCuit: data.dniCuit ?? "",
       direccion: data.direccion ?? "",
-      portalPassword: "",
+      portalPassword: data.portalPassword ?? "",
     });
   }
 
   useEffect(() => { fetchCliente(); }, [id]);
 
   function handleCuitChange(value: string) {
-    setForm({ ...form, dniCuit: value });
     const digits = value.replace(/[-\s]/g, "");
+    const formatted = digits.length === 11 ? `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits[10]}` : value;
+    setForm({ ...form, dniCuit: formatted });
     if (digits.length === 11) {
-      setCuitError(validarCuit(value) ? "" : "CUIT inválido (dígito verificador incorrecto)");
+      setCuitError(validarCuit(formatted) ? "" : "CUIT inválido (dígito verificador incorrecto)");
     } else {
       setCuitError("");
     }
@@ -220,7 +221,7 @@ export default function ClienteDetailPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Órdenes de Trabajo</CardTitle>
               <Link href={`/ordenes/nueva?clienteId=${id}`}>
-                <Button size="sm" style={{ background: "oklch(0.42 0.14 292)", color: "white" }}>
+                <Button size="sm" style={{ background: "oklch(0.55 0.10 220)", color: "white", border: "2px solid oklch(0.42 0.10 220)", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }}>
                   <Plus className="h-3 w-3 mr-1" />Nueva
                 </Button>
               </Link>

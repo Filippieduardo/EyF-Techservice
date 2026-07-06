@@ -15,6 +15,7 @@ enum UserRole {
 enum EstadoOrden {
   INGRESADO
   EN_DIAGNOSTICO
+  DIAGNOSTICADO
   ESPERANDO_REPUESTO
   EN_REPARACION
   TERMINADO
@@ -111,8 +112,10 @@ model OrdenTrabajo {
   diagnostico      String?
   trabajoRealizado String?
   notasInternas    String?
+  notaEstado       String?
   observacionesCliente String?
-  costoTecnico     Decimal?    @db.Decimal(10, 2)
+  costoTecnico        Decimal?    @db.Decimal(10, 2)
+  presupuestoAbonado  Decimal     @default(0) @db.Decimal(10, 2)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 

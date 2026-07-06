@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const userSchema = z.object({
@@ -19,7 +18,7 @@ export async function GET() {
 
   const usuarios = await prisma.user.findMany({
     orderBy: { nombre: "asc" },
-    select: { id: true, nombre: true, email: true, role: true, activo: true, createdAt: true },
+    select: { id: true, nombre: true, email: true, role: true, activo: true, createdAt: true, password: true },
   });
 
   return NextResponse.json(usuarios);
@@ -35,9 +34,8 @@ export async function POST(req: NextRequest) {
   const data = userSchema.parse({ ...body, email: body.email?.toLowerCase() });
 
   try {
-    const hash = await bcrypt.hash(data.password, 10);
     const user = await prisma.user.create({
-      data: { ...data, password: hash },
+      data,
       select: { id: true, nombre: true, email: true, role: true },
     });
     return NextResponse.json(user, { status: 201 });

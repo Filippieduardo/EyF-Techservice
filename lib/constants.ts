@@ -1,12 +1,13 @@
 export const ESTADOS_ORDEN = [
-  { value: "INGRESADO", label: "Ingresado", color: "bg-gray-100 text-gray-700" },
-  { value: "EN_DIAGNOSTICO", label: "En Diagnóstico", color: "bg-blue-100 text-blue-700" },
-  { value: "ESPERANDO_REPUESTO", label: "Esperando Repuesto", color: "bg-yellow-100 text-yellow-700" },
-  { value: "EN_REPARACION", label: "En Reparación", color: "bg-orange-100 text-orange-700" },
-  { value: "TERMINADO", label: "Terminado", color: "bg-green-100 text-green-700" },
-  { value: "ENTREGADO", label: "Entregado", color: "bg-gray-100 text-gray-500" },
-  { value: "NO_REPARABLE", label: "No Reparable", color: "bg-red-100 text-red-700" },
-  { value: "CANCELADO", label: "Cancelado", color: "bg-red-100 text-red-400" },
+  { value: "INGRESADO",          label: "INGRESADO",          color: "bg-green-600 text-white" },
+  { value: "EN_DIAGNOSTICO",     label: "EN DIAGNÓSTICO",     color: "bg-green-600 text-white" },
+  { value: "DIAGNOSTICADO",      label: "DIAGNOSTICADO",      color: "bg-yellow-400 text-black" },
+  { value: "ESPERANDO_REPUESTO", label: "ESPERANDO REPUESTO", color: "bg-purple-600 text-white" },
+  { value: "EN_REPARACION",      label: "EN REPARACIÓN",      color: "bg-yellow-400 text-black" },
+  { value: "TERMINADO",          label: "TERMINADO",          color: "bg-sky-400 text-white" },
+  { value: "ENTREGADO",          label: "ENTREGADO",          color: "bg-sky-400 text-white" },
+  { value: "NO_REPARABLE",       label: "NO REPARABLE",       color: "bg-red-600 text-white" },
+  { value: "CANCELADO",          label: "CANCELADO",          color: "bg-red-600 text-white" },
 ];
 
 export const TIPOS_EQUIPO = [

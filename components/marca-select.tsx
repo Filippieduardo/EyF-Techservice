@@ -16,9 +16,10 @@ interface MarcaSelectProps {
   onValueChange: (value: string | null) => void;
   placeholder?: string;
   disabled?: boolean;
+  hideAdd?: boolean;
 }
 
-export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar marca", disabled }: MarcaSelectProps) {
+export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar marca", disabled, hideAdd }: MarcaSelectProps) {
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [adding, setAdding] = useState(false);
   const [nuevaMarca, setNuevaMarca] = useState("");
@@ -35,7 +36,7 @@ export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar m
     const res = await fetch("/api/marcas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: nuevaMarca.trim() }),
+      body: JSON.stringify({ nombre: nuevaMarca.trim().toUpperCase() }),
     });
     if (res.ok) {
       const marca = await res.json();
@@ -83,7 +84,7 @@ export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar m
           {marcas.map(m => <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>)}
         </SelectContent>
       </Select>
-      {!disabled && (
+      {!disabled && !hideAdd && (
         <Button type="button" size="sm" variant="outline" onClick={() => setAdding(true)} title="Agregar nueva marca">
           <Plus className="h-4 w-4" />
         </Button>

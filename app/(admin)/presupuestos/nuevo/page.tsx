@@ -7,12 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/constants";
 
 interface Cliente { id: string; nombre: string; }
-interface Item { descripcion: string; cantidad: number; precioUnitario: number; }
+interface Item { descripcion: string; cantidad: number; precioUnitario: number; _editingPrecio?: boolean; }
 
 export default function NuevoPresupuestoPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function NuevoPresupuestoPage() {
   const [loading, setLoading] = useState(false);
   const [clienteId, setClienteId] = useState(preClienteId);
   const [ordenId] = useState(preOrdenId);
+  const [ordenNumero, setOrdenNumero] = useState<string>("");
   const [validezDias, setValidezDias] = useState(30);
   const [descuento, setDescuento] = useState(0);
   const [notas, setNotas] = useState("");
@@ -33,19 +35,33 @@ export default function NuevoPresupuestoPage() {
 
   useEffect(() => {
     fetch("/api/clientes").then(r => r.ok ? r.json() : []).then(setClientes);
+    if (preOrdenId) {
+      fetch(`/api/ordenes/${preOrdenId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data) {
+            setOrdenNumero(data.numero ?? preOrdenId);
+            const abonado = Number(data.presupuestoAbonado ?? 0);
+            if (abonado > 0) setDescuento(abonado);
+          }
+        });
+    }
   }, []);
 
-  function setItem(idx: number, field: keyof Item, value: string | number) {
+  function setItem(idx: number, field: keyof Item, value: string | number | boolean) {
     setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   }
 
   const subtotal = items.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
   const total = subtotal - descuento;
+  const iva = total * 0.21;
+  const totalGeneral = total + iva;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!clienteId) { toast.error("Seleccionar cliente"); return; }
-    if (items.some(i => !i.descripcion)) { toast.error("Completar descripción de todos los ítems"); return; }
+    const itemsConDescripcionVacia = items.filter(i => !i.descripcion.trim());
+    if (itemsConDescripcionVacia.length > 0) { toast.error("Todos los ítems deben tener descripción"); return; }
     setLoading(true);
     const res = await fetch("/api/presupuestos", {
       method: "POST",
@@ -94,13 +110,13 @@ export default function NuevoPresupuestoPage() {
               {ordenId && (
                 <div className="space-y-1">
                   <Label>Orden vinculada</Label>
-                  <Input value={ordenId} disabled />
+                  <Input value={ordenNumero || ordenId} disabled className="font-mono font-bold text-foreground contrast-more:text-black" />
                 </div>
               )}
             </div>
             <div className="space-y-1">
               <Label>Notas</Label>
-              <Textarea value={notas} onChange={e => setNotas(e.target.value)} rows={2} />
+              <Textarea value={notas} onChange={e => setNotas(e.target.value.toUpperCase())} rows={2} />
             </div>
           </CardContent>
         </Card>
@@ -118,20 +134,32 @@ export default function NuevoPresupuestoPage() {
             <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
               <div className="col-span-6">Descripción</div>
               <div className="col-span-2 text-center">Cant.</div>
-              <div className="col-span-3 text-right">Precio Unit.</div>
+              <div className="col-span-3 text-right">Importe Unit.</div>
               <div className="col-span-1"></div>
             </div>
             {items.map((item, idx) => (
               <div key={idx} className="flex flex-col sm:grid sm:grid-cols-12 gap-2 items-start sm:items-center border sm:border-0 rounded p-2 sm:p-0">
                 <div className="w-full sm:col-span-6">
-                  <Input value={item.descripcion} onChange={e => setItem(idx, "descripcion", e.target.value)} placeholder="Descripción..." />
+                  <Input
+                    value={item.descripcion}
+                    onChange={e => setItem(idx, "descripcion", e.target.value.toUpperCase())}
+                    placeholder="Descripción..."
+                    className={!item.descripcion.trim() ? "border-red-300" : ""}
+                  />
                 </div>
                 <div className="flex gap-2 w-full sm:contents">
                   <div className="flex-1 sm:col-span-2">
                     <Input type="number" min={1} value={item.cantidad} onChange={e => setItem(idx, "cantidad", Number(e.target.value))} className="text-center" placeholder="Cant." />
                   </div>
                   <div className="flex-1 sm:col-span-3">
-                    <Input type="number" min={0} step="0.01" value={item.precioUnitario} onChange={e => setItem(idx, "precioUnitario", Number(e.target.value))} className="text-right" placeholder="Precio" />
+                    <Input
+                      className="text-right"
+                      placeholder="$ 0,00"
+                      value={item._editingPrecio ? item.precioUnitario : formatCurrency(item.precioUnitario)}
+                      onFocus={() => setItem(idx, "_editingPrecio", true)}
+                      onBlur={() => setItem(idx, "_editingPrecio", false)}
+                      onChange={e => setItem(idx, "precioUnitario", Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
+                    />
                   </div>
                   <div className="sm:col-span-1 flex justify-center items-center">
                     {items.length > 1 && (
@@ -156,9 +184,18 @@ export default function NuevoPresupuestoPage() {
               <span className="text-gray-500">Descuento:</span>
               <Input type="number" min={0} step="0.01" value={descuento} onChange={e => setDescuento(Number(e.target.value))} className="w-36 text-right h-7" />
             </div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2">
+            <Separator />
+            <div className="flex justify-between font-bold text-base">
               <span>Total:</span>
               <span>{formatCurrency(total)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>IVA 21%:</span>
+              <span>{formatCurrency(iva)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-lg border-t pt-2">
+              <span>Total General:</span>
+              <span>{formatCurrency(totalGeneral)}</span>
             </div>
           </CardContent>
         </Card>

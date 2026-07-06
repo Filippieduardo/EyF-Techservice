@@ -56,9 +56,11 @@ export default function ClientesPage() {
   useEffect(() => { fetchClientes(); }, []);
 
   function handleCuitChange(value: string) {
-    setForm({ ...form, dniCuit: value });
-    if (value.replace(/[-\s]/g, "").length === 11) {
-      setCuitError(validarCuit(value) ? "" : "CUIT inválido (dígito verificador incorrecto)");
+    const digits = value.replace(/[-\s]/g, "");
+    const formatted = digits.length === 11 ? `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits[10]}` : value;
+    setForm({ ...form, dniCuit: formatted });
+    if (digits.length === 11) {
+      setCuitError(validarCuit(formatted) ? "" : "CUIT inválido (dígito verificador incorrecto)");
     } else {
       setCuitError("");
     }
