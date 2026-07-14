@@ -37,7 +37,7 @@ export default function NuevaOrdenPage() {
 
   useEffect(() => {
     fetch("/api/clientes").then(r => r.ok ? r.json() : []).then(setClientes);
-    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then(setTecnicos);
+    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => u.role === "TECNICO" && u.activo)));
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -66,11 +66,11 @@ export default function NuevaOrdenPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl space-y-4 md:space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Nueva Orden de Trabajo</h1>
+        <Button size="sm" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Volver
         </Button>
-        <h1 className="text-2xl font-bold">Nueva Orden de Trabajo</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -114,11 +114,11 @@ export default function NuevaOrdenPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Modelo</Label>
-                <Input value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value})} placeholder="ej: LaserJet P1102" />
+                <Input value={form.modelo} onChange={e => setForm({...form, modelo: e.target.value.toUpperCase()})} placeholder="ej: LaserJet P1102" />
               </div>
               <div className="space-y-1">
                 <Label>Número de Serie</Label>
-                <Input value={form.numeroSerie} onChange={e => setForm({...form, numeroSerie: e.target.value})} />
+                <Input value={form.numeroSerie} onChange={e => setForm({...form, numeroSerie: e.target.value.toUpperCase()})} />
               </div>
             </div>
           </CardContent>
@@ -131,7 +131,7 @@ export default function NuevaOrdenPage() {
               <Label>Descripción del Problema *</Label>
               <Textarea
                 value={form.descripcionProblema}
-                onChange={e => setForm({...form, descripcionProblema: e.target.value})}
+                onChange={e => setForm({...form, descripcionProblema: e.target.value.toUpperCase()})}
                 placeholder="Describir el problema reportado por el cliente..."
                 rows={3}
                 required

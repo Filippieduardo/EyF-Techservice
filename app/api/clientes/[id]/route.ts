@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const updateSchema = z.object({
   nombre: z.string().min(1).optional(),
   email: z.string().email().optional().or(z.literal("")),
   telefono: z.string().optional(),
+  condicionIva: z.string().optional(),
   dniCuit: z.string().optional(),
   direccion: z.string().optional(),
   portalPassword: z.string().optional(),
@@ -20,20 +22,22 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   }
 
   const { id } = await params;
-  const cliente = await prisma.cliente.findUnique({
-    where: { id },
-    include: {
-      ordenes: {
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        include: { marca: { select: { nombre: true } } },
-      },
-      presupuestos: { orderBy: { fecha: "desc" }, take: 5 },
-    },
-  });
-
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Cliente" WHERE id = $1`, id);
+  const cliente = rows[0];
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-  return NextResponse.json(cliente);
+
+  const [ordenes, presupuestos] = await Promise.all([
+    prisma.$queryRawUnsafe<any[]>(`SELECT o.*, m.nombre as "marcaNombre" FROM "OrdenTrabajo" o LEFT JOIN "Marca" m ON m.id = o."marcaId" WHERE o."clienteId" = $1 ORDER BY o."createdAt" DESC LIMIT 10`, id),
+    prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Presupuesto" WHERE "clienteId" = $1 ORDER BY fecha DESC LIMIT 5`, id),
+  ]);
+
+  const { portalPassword, ...safeCliente } = cliente;
+  return NextResponse.json({
+    ...safeCliente,
+    tienePasswordPortal: !!portalPassword,
+    ordenes: ordenes.map((o: any) => ({ ...o, marca: o.marcaNombre ? { nombre: o.marcaNombre } : null })),
+    presupuestos,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -46,15 +50,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const data = updateSchema.parse(body);
 
-  const updateData: any = { ...data };
-  if (data.email === "") updateData.email = null;
+  const sets: string[] = ['"updatedAt" = NOW()'];
+  const vals: any[] = [];
+  let i = 1;
 
-  if (!data.portalPassword) {
-    delete updateData.portalPassword;
-  }
+  if (data.nombre       !== undefined) { sets.push(`"nombre" = $${i++}`);        vals.push(data.nombre); }
+  if (data.email        !== undefined) { sets.push(`"email" = $${i++}`);         vals.push(data.email || null); }
+  if (data.telefono     !== undefined) { sets.push(`"telefono" = $${i++}`);      vals.push(data.telefono || null); }
+  if (data.condicionIva !== undefined) { sets.push(`"condicionIva" = $${i++}`);  vals.push(data.condicionIva || "CONS. FINAL"); }
+  if (data.dniCuit      !== undefined) { sets.push(`"dniCuit" = $${i++}`);       vals.push(data.dniCuit || null); }
+  if (data.direccion    !== undefined) { sets.push(`"direccion" = $${i++}`);     vals.push(data.direccion || null); }
+  if (data.activo       !== undefined) { sets.push(`"activo" = $${i++}`);        vals.push(data.activo); }
+  if (data.portalPassword)             { sets.push(`"portalPassword" = $${i++}`); vals.push(await bcrypt.hash(data.portalPassword, 10)); }
 
-  const cliente = await prisma.cliente.update({ where: { id }, data: updateData });
-  return NextResponse.json(cliente);
+  vals.push(id);
+  await prisma.$executeRawUnsafe(
+    `UPDATE "Cliente" SET ${sets.join(", ")} WHERE id = $${i}`,
+    ...vals
+  );
+
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Cliente" WHERE id = $1`, id);
+  const { portalPassword, ...safeCliente } = rows[0] ?? {};
+  return NextResponse.json(safeCliente);
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -10,13 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { MarcaSelect } from "@/components/marca-select";
-import { ArrowLeft, Save, FileText, Clock, DollarSign, Plus, Trash2, Package, MapPin } from "lucide-react";
+import { ArrowLeft, Save, FileText, Clock, DollarSign, Plus, Trash2, Package, MapPin, Printer } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import {
   ESTADOS_ORDEN, TIPOS_EQUIPO, getEstadoOrden, getTipoEquipo,
-  formatDate, formatCurrency,
+  formatDate, formatCurrency, getEstadoPresupuesto,
 } from "@/lib/constants";
 
 interface Orden {
@@ -117,7 +117,7 @@ export default function OrdenDetailPage() {
   useEffect(() => {
     fetchOrden();
     fetchRepuestosUsados();
-    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then(setTecnicos);
+    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => u.role === "TECNICO" && u.activo)));
   }, [id]);
 
   async function buscarRepuesto(q: string) {
@@ -230,7 +230,8 @@ export default function OrdenDetailPage() {
     });
     if (res.ok) {
       toast.success("Estado actualizado");
-      fetchOrden();
+      await fetchOrden();
+      setForm((f: any) => ({ ...f, notaEstado: "" }));
       fetchRepuestosUsados();
     } else {
       toast.error("Error al cambiar estado");
@@ -248,9 +249,6 @@ export default function OrdenDetailPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
       <div className="flex items-center gap-4 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold font-mono">{orden.numero}</h1>
@@ -260,14 +258,22 @@ export default function OrdenDetailPage() {
           </div>
           <p className="text-gray-500 text-sm">{orden.cliente.nombre} · Ingreso: {formatDate(orden.fechaIngreso)}</p>
         </div>
-        <div className="flex gap-2">
-          {!orden.presupuesto && isAdmin && (
-            <Link href={`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`}>
-              <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" />Presupuesto</Button>
-            </Link>
-          )}
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            {!orden.presupuesto && isAdmin && (
+              <Link href={`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`}>
+                <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" />Presupuesto</Button>
+              </Link>
+            )}
+            <Button variant="outline" size="sm" onClick={() => window.open(`/api/ordenes/${id}/print`, "_blank")}>
+              <Printer className="h-4 w-4 mr-1" />Imprimir
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+          <Button size="sm" className="self-end" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
           </Button>
         </div>
       </div>
@@ -292,8 +298,8 @@ export default function OrdenDetailPage() {
         {presupuestada && (
           <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
             <span className="text-gray-500">Presupuesto:</span>
-            <span className={`font-medium ${presupuestoAceptado ? "text-green-600" : "text-yellow-600"}`}>
-              {orden.presupuesto!.estado}
+            <span className={`font-medium px-2 py-0.5 rounded text-xs ${getEstadoPresupuesto(orden.presupuesto!.estado).color}`}>
+              {getEstadoPresupuesto(orden.presupuesto!.estado).label}
             </span>
           </div>
         )}
@@ -327,11 +333,11 @@ export default function OrdenDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Modelo</Label>
-                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} />
+                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value.toUpperCase() })} />
                 </div>
                 <div className="space-y-1">
                   <Label>Número de Serie</Label>
-                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value })} />
+                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value.toUpperCase() })} />
                 </div>
               </div>
             </CardContent>
@@ -378,17 +384,19 @@ export default function OrdenDetailPage() {
                   </p>
                 )}
               </div>
-              <div className="space-y-1">
-                <Label className="flex items-center gap-1"><DollarSign className="h-3 w-3 text-blue-600" />Presupuesto Abonado</Label>
-                <Input
-                  className="max-w-40"
-                  placeholder="$ 0,00"
-                  value={form._abonadoEditing ? form.presupuestoAbonado : formatCurrency(form.presupuestoAbonado || 0)}
-                  onFocus={() => setForm((f: any) => ({ ...f, _abonadoEditing: true }))}
-                  onBlur={() => setForm((f: any) => ({ ...f, _abonadoEditing: false }))}
-                  onChange={e => setForm((f: any) => ({ ...f, presupuestoAbonado: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
-                />
-              </div>
+              {isAdmin && (
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1 text-blue-700 font-semibold text-sm"><DollarSign className="h-4 w-4 text-blue-600" />Presupuesto Abonado</Label>
+                  <Input
+                    className="max-w-48 text-lg font-bold border-blue-300 focus:border-blue-500"
+                    placeholder="$ 0,00"
+                    value={form._abonadoEditing ? form.presupuestoAbonado : formatCurrency(form.presupuestoAbonado || 0)}
+                    onFocus={() => setForm((f: any) => ({ ...f, _abonadoEditing: true }))}
+                    onBlur={() => setForm((f: any) => ({ ...f, _abonadoEditing: false }))}
+                    onChange={e => setForm((f: any) => ({ ...f, presupuestoAbonado: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -486,12 +494,12 @@ export default function OrdenDetailPage() {
                 {isAdmin ? (
                   <Link href={`/presupuestos/${orden.presupuesto.id}`} className="flex items-center justify-between hover:underline">
                     <span className="text-sm font-mono">{orden.presupuesto.numero}</span>
-                    <Badge className="text-xs">{orden.presupuesto.estado}</Badge>
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${getEstadoPresupuesto(orden.presupuesto.estado).color}`}>{getEstadoPresupuesto(orden.presupuesto.estado).label}</span>
                   </Link>
                 ) : (
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-mono">{orden.presupuesto.numero}</span>
-                    <Badge className="text-xs">{orden.presupuesto.estado}</Badge>
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${getEstadoPresupuesto(orden.presupuesto.estado).color}`}>{getEstadoPresupuesto(orden.presupuesto.estado).label}</span>
                   </div>
                 )}
                 {isAdmin && <p className="text-lg font-bold mt-1">{formatCurrency(orden.presupuesto.total)}</p>}
@@ -590,10 +598,26 @@ export default function OrdenDetailPage() {
                 {orden.historial.map((h) => {
                   const est = getEstadoOrden(h.estado);
                   return (
-                    <div key={h.id} className="border-l-2 border-gray-200 pl-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${est.color}`}>{est.label}</span>
-                      {h.nota && <p className="text-xs text-gray-600 mt-0.5">{h.nota}</p>}
-                      <p className="text-xs text-gray-400">{formatDate(h.createdAt)} · {h.user?.nombre ?? "Sistema"}</p>
+                    <div key={h.id} className="border-l-2 border-gray-200 pl-3 flex items-start justify-between gap-2">
+                      <div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${est.color}`}>{est.label}</span>
+                        {h.nota && <p className="text-xs text-gray-600 mt-0.5">{h.nota}</p>}
+                        <p className="text-xs text-gray-400">{formatDate(h.createdAt)} · {h.user?.nombre ?? "Sistema"}</p>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          title="Eliminar estado"
+                          className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5"
+                          onClick={async () => {
+                            if (!confirm("¿Eliminar este estado del historial?")) return;
+                            await fetch(`/api/historial/${h.id}`, { method: "DELETE" });
+                            await fetchOrden();
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   );
                 })}

@@ -8,9 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Users, Phone, Mail, FileText, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+const CONDICIONES_IVA = ["INSCRIPTO", "NO ALCANZADO", "MONOTRIBUTO", "EXCENTO", "CONS. FINAL"];
 
 interface Cliente {
   id: string;
@@ -20,6 +23,13 @@ interface Cliente {
   dniCuit: string | null;
   activo: boolean;
   _count: { ordenes: number };
+}
+
+function formatCuit(raw: string | null): string {
+  if (!raw) return "";
+  const digits = raw.replace(/[-\s]/g, "");
+  if (digits.length === 11) return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits[10]}`;
+  return raw;
 }
 
 function validarCuit(cuit: string): boolean {
@@ -42,7 +52,7 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
-    nombre: "", email: "", telefono: "", dniCuit: "", direccion: "", portalPassword: "",
+    nombre: "", email: "", telefono: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "",
   });
   const [cuitError, setCuitError] = useState("");
 
@@ -85,7 +95,7 @@ export default function ClientesPage() {
     if (res.ok) {
       toast.success("Cliente creado");
       setOpen(false);
-      setForm({ nombre: "", email: "", telefono: "", dniCuit: "", direccion: "", portalPassword: "" });
+      setForm({ nombre: "", email: "", telefono: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "" });
       setCuitError("");
       fetchClientes(q);
     } else {
@@ -109,16 +119,25 @@ export default function ClientesPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1">
                 <Label>Nombre / Razón Social *</Label>
-                <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+                <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value.toUpperCase() })} required />
               </div>
               <div className="space-y-1">
                 <Label>Email</Label>
-                <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value.toLowerCase() })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Teléfono</Label>
+                <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value.toUpperCase() })} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label>Teléfono</Label>
-                  <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+                  <Label>Condición IVA</Label>
+                  <Select value={form.condicionIva} onValueChange={v => setForm({ ...form, condicionIva: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONDICIONES_IVA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <Label>DNI / CUIT</Label>
@@ -133,7 +152,7 @@ export default function ClientesPage() {
               </div>
               <div className="space-y-1">
                 <Label>Dirección</Label>
-                <Input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
+                <Input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value.toUpperCase() })} />
               </div>
               <div className="space-y-1">
                 <Label>Contraseña portal cliente *</Label>
@@ -196,7 +215,7 @@ export default function ClientesPage() {
                         <div className="flex gap-3 text-sm text-gray-500">
                           {c.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>}
                           {c.telefono && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{c.telefono}</span>}
-                          {c.dniCuit && <span>{c.dniCuit}</span>}
+                          {c.dniCuit && <span>{formatCuit(c.dniCuit)}</span>}
                         </div>
                       </div>
                     </div>

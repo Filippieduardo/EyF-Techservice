@@ -22,6 +22,8 @@ interface Repuesto {
   descripcion: string;
   categoriaId: string | null;
   categoria: Categoria | null;
+  marcaId: string | null;
+  marca: { id: string; nombre: string } | null;
   stockActual: number;
   stockMinimo: number;
   precioCosto: number;
@@ -54,13 +56,16 @@ export default function RepuestoDetailPage() {
 
   async function fetchRepuesto() {
     const res = await fetch(`/api/repuestos/${id}`);
+    if (!res.ok) { console.error("[fetchRepuesto] error", res.status); return; }
     const data = await res.json();
+    if (!data || data.error) { console.error("[fetchRepuesto] bad data", data); return; }
     setRepuesto(data);
     setEditForm({
       descripcion: data.descripcion,
       numeroParte: data.numeroParte ?? "",
       codigoInterno: data.codigoInterno ?? "",
       categoriaId: data.categoriaId ?? "",
+      marcaId: data.marcaId ?? "",
       stockMinimo: data.stockMinimo,
       precioCosto: data.precioCosto,
       precioVenta: data.precioVenta,
@@ -127,13 +132,11 @@ export default function RepuestoDetailPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
       <div className="flex items-center gap-4 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" />Volver
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{repuesto.descripcion}</h1>
           <p className="text-base font-bold text-foreground">{repuesto.numeroParte ?? <span className="text-gray-400 font-normal text-sm">Sin número de parte</span>}</p>
         </div>
+        <div className="flex flex-col items-end gap-2">
         {isAdmin && (
           <Button onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
@@ -144,6 +147,10 @@ export default function RepuestoDetailPage() {
             SOLO CONSULTA
           </div>
         )}
+        <Button size="sm" className="self-end" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-1" />Volver
+        </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -155,18 +162,22 @@ export default function RepuestoDetailPage() {
                 <Label>Descripción</Label>
                 <Input
                   value={editForm.descripcion ?? ""}
-                  onChange={e => setEditForm({ ...editForm, descripcion: e.target.value })}
+                  onChange={e => setEditForm({ ...editForm, descripcion: e.target.value.toUpperCase() })}
                   disabled={!isAdmin}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label>Número de Parte</Label>
-                  <Input value={editForm.numeroParte ?? ""} onChange={e => setEditForm({ ...editForm, numeroParte: e.target.value })} disabled={!isAdmin} />
+                  <Input value={editForm.numeroParte ?? ""} onChange={e => setEditForm({ ...editForm, numeroParte: e.target.value.toUpperCase() })} disabled={!isAdmin} />
                 </div>
                 <div className="space-y-1">
-                  <Label>Código Interno</Label>
-                  <Input value={editForm.codigoInterno ?? ""} onChange={e => setEditForm({ ...editForm, codigoInterno: e.target.value })} disabled={!isAdmin} />
+                  <Label>Marca</Label>
+                  <MarcaSelect
+                    value={editForm.marcaId ?? ""}
+                    onValueChange={v => setEditForm({ ...editForm, marcaId: v === "none" ? "" : (v ?? "") })}
+                    disabled={!isAdmin}
+                  />
                 </div>
               </div>
               <div className="space-y-1">
@@ -255,15 +266,15 @@ export default function RepuestoDetailPage() {
                         </div>
                         <div className="space-y-1">
                           <Label>Modelo</Label>
-                          <Input value={compatForm.modelo} onChange={e => setCompatForm({ ...compatForm, modelo: e.target.value })} placeholder="ej: LaserJet P1102" />
+                          <Input value={compatForm.modelo} onChange={e => setCompatForm({ ...compatForm, modelo: e.target.value.toUpperCase() })} placeholder="ej: LaserJet P1102" />
                         </div>
                         <div className="space-y-1">
                           <Label>Número de Parte OEM</Label>
-                          <Input value={compatForm.numeroParteOem} onChange={e => setCompatForm({ ...compatForm, numeroParteOem: e.target.value })} />
+                          <Input value={compatForm.numeroParteOem} onChange={e => setCompatForm({ ...compatForm, numeroParteOem: e.target.value.toUpperCase() })} />
                         </div>
                         <div className="space-y-1">
                           <Label>Notas</Label>
-                          <Input value={compatForm.notas} onChange={e => setCompatForm({ ...compatForm, notas: e.target.value })} />
+                          <Input value={compatForm.notas} onChange={e => setCompatForm({ ...compatForm, notas: e.target.value.toUpperCase() })} />
                         </div>
                         <Button onClick={handleAddCompat} className="w-full" disabled={!compatForm.tipoEquipo}>Agregar</Button>
                       </div>
@@ -332,7 +343,7 @@ export default function RepuestoDetailPage() {
                         </div>
                         <div className="space-y-1">
                           <Label>Notas</Label>
-                          <Input value={movForm.notas} onChange={e => setMovForm({ ...movForm, notas: e.target.value })} />
+                          <Input value={movForm.notas} onChange={e => setMovForm({ ...movForm, notas: e.target.value.toUpperCase() })} />
                         </div>
                         <Button onClick={handleMovimiento} className="w-full">Registrar</Button>
                       </div>

@@ -56,12 +56,30 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(ordenes);
+  // Fetch presupuesto estados separately to avoid Prisma 7 relation include issues
+  const presupuestoIds = ordenes.map((o: any) => o.presupuestoId).filter(Boolean) as string[];
+  const presupuestosMap: Record<string, string> = {};
+  if (presupuestoIds.length > 0) {
+    const presupuestos = await prisma.presupuesto.findMany({
+      where: { id: { in: presupuestoIds } },
+      select: { id: true, estado: true },
+    });
+    for (const p of presupuestos as any[]) {
+      presupuestosMap[p.id] = p.estado;
+    }
+  }
+
+  const result = ordenes.map((o: any) => ({
+    ...o,
+    presupuesto: o.presupuestoId ? { id: o.presupuestoId, estado: presupuestosMap[o.presupuestoId] ?? null } : null,
+  }));
+
+  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || (session.user as any).type !== "staff") {
+  if (!session || (session.user as any).type !== "staff" || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 

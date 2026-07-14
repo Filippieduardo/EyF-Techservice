@@ -12,7 +12,7 @@ import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/constants";
 
-interface Cliente { id: string; nombre: string; }
+interface Cliente { id: string; nombre: string; condicionIva?: string; }
 interface Item { descripcion: string; cantidad: number; precioUnitario: number; _editingPrecio?: boolean; }
 
 export default function NuevoPresupuestoPage() {
@@ -54,7 +54,8 @@ export default function NuevoPresupuestoPage() {
 
   const subtotal = items.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
   const total = subtotal - descuento;
-  const iva = total * 0.21;
+  const clienteSeleccionado = clientes.find(c => c.id === clienteId);
+  const iva = clienteSeleccionado?.condicionIva === "INSCRIPTO" ? total * 0.21 : 0;
   const totalGeneral = total + iva;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -80,9 +81,9 @@ export default function NuevoPresupuestoPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl space-y-4 md:space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-1" />Volver</Button>
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Nuevo Presupuesto</h1>
+        <Button size="sm" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-1" />Volver</Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

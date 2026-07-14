@@ -17,7 +17,6 @@ interface Usuario {
   role: string;
   activo: boolean;
   createdAt: string;
-  password: string;
 }
 
 const emptyForm = { nombre: "", email: "", password: "", role: "TECNICO" };
@@ -59,7 +58,7 @@ export default function UsuariosPage() {
 
   function openEdit(u: Usuario) {
     setEditUser(u);
-    setEditForm({ nombre: u.nombre, email: u.email, role: u.role, password: u.password });
+    setEditForm({ nombre: u.nombre, email: u.email, role: u.role, password: "" });
     setShowEditPwd(false);
     setEditOpen(true);
   }
@@ -163,7 +162,7 @@ export default function UsuariosPage() {
           <form onSubmit={handleCreate} className="space-y-3">
             <div className="space-y-1">
               <Label>Nombre *</Label>
-              <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+              <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value.toUpperCase() })} required />
             </div>
             <div className="space-y-1">
               <Label>Email *</Label>
@@ -212,7 +211,7 @@ export default function UsuariosPage() {
           <form onSubmit={handleEdit} className="space-y-3">
             <div className="space-y-1">
               <Label>Nombre *</Label>
-              <Input value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })} required />
+              <Input value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value.toUpperCase() })} required />
             </div>
             <div className="space-y-1">
               <Label>Email *</Label>

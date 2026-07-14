@@ -33,7 +33,7 @@ export default function PortalLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex justify-center pt-6">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="bg-green-600 p-3 rounded-full mb-3">
@@ -55,7 +55,7 @@ export default function PortalLoginPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
                   placeholder="tu@email.com"
                   required
                 />

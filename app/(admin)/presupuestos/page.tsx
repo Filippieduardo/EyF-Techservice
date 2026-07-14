@@ -62,7 +62,11 @@ export default function PresupuestosPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {ESTADOS_PRESUPUESTO.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+            {ESTADOS_PRESUPUESTO.map(e => (
+              <SelectItem key={e.value} value={e.value}>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${e.color}`}>{e.label}</span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

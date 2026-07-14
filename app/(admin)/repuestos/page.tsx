@@ -22,6 +22,8 @@ interface Repuesto {
   descripcion: string;
   categoriaId: string | null;
   categoria: Categoria | null;
+  marcaId: string | null;
+  marca: { id: string; nombre: string } | null;
   stockActual: number;
   stockMinimo: number;
   precioCosto: number;
@@ -31,7 +33,7 @@ interface Repuesto {
 
 const emptyForm = {
   descripcion: "", numeroParte: "", codigoInterno: "",
-  categoriaId: "", stockActual: 0, stockMinimo: 1,
+  categoriaId: "", marcaId: "", stockActual: 0, stockMinimo: 1,
   precioCosto: 0, precioVenta: 0,
 };
 
@@ -41,6 +43,7 @@ export default function RepuestosPage() {
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [q, setQ] = useState("");
+  const [marcaFiltro, setMarcaFiltro] = useState("");
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
@@ -48,10 +51,14 @@ export default function RepuestosPage() {
   const [busqForm, setBusqForm] = useState({ tipoEquipo: "", marcaId: "", modelo: "", numeroParte: "" });
   const [resultados, setResultados] = useState<any[]>([]);
 
-  async function fetchRepuestos(query = "") {
+  async function fetchRepuestos(query = q, marca = marcaFiltro) {
     setLoading(true);
-    const res = await fetch(`/api/repuestos?q=${encodeURIComponent(query)}`);
-    setRepuestos(await res.json());
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (marca && marca !== "none") params.set("marcaId", marca);
+    const res = await fetch(`/api/repuestos?${params}`);
+    const data = await res.json();
+    setRepuestos(Array.isArray(data) ? data : []);
     setLoading(false);
   }
 
@@ -100,11 +107,6 @@ export default function RepuestosPage() {
           <p className="text-gray-500 text-sm">{repuestos.length} repuestos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {isAdmin && (
-            <Link href="/categorias">
-              <Button variant="outline" size="sm"><Settings className="h-4 w-4 mr-1" />Categorías</Button>
-            </Link>
-          )}
 
           <Dialog open={buscarOpen} onOpenChange={setBuscarOpen}>
             <Button variant="outline" onClick={() => setBuscarOpen(true)}><Search className="h-4 w-4 mr-2" />Buscar Compatibles</Button>
@@ -171,16 +173,16 @@ export default function RepuestosPage() {
               <form onSubmit={handleCreate} className="space-y-3">
                 <div className="space-y-1">
                   <Label>Descripción *</Label>
-                  <Input value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value})} required />
+                  <Input value={form.descripcion} onChange={e => setForm({...form, descripcion: e.target.value.toUpperCase()})} required />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label>Número de Parte</Label>
-                    <Input value={form.numeroParte} onChange={e => setForm({...form, numeroParte: e.target.value})} />
+                    <Input value={form.numeroParte} onChange={e => setForm({...form, numeroParte: e.target.value.toUpperCase()})} />
                   </div>
                   <div className="space-y-1">
-                    <Label>Código Interno</Label>
-                    <Input value={form.codigoInterno} onChange={e => setForm({...form, codigoInterno: e.target.value})} />
+                    <Label>Marca</Label>
+                    <MarcaSelect value={form.marcaId} onValueChange={v => setForm({...form, marcaId: v === "none" ? "" : (v ?? "")})} />
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -224,9 +226,24 @@ export default function RepuestosPage() {
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-        <Input className="pl-9" placeholder="Buscar descripción, número de parte..." value={q} onChange={e => { setQ(e.target.value); fetchRepuestos(e.target.value); }} />
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          <Input
+            className="pl-9 w-64"
+            placeholder="Buscar descripción, número de parte..."
+            value={q}
+            onChange={e => { setQ(e.target.value); fetchRepuestos(e.target.value, marcaFiltro); }}
+          />
+        </div>
+        <div className="w-48">
+          <MarcaSelect
+            value={marcaFiltro}
+            onValueChange={v => { const m = v === "none" ? "" : (v ?? ""); setMarcaFiltro(m); fetchRepuestos(q, m); }}
+            placeholder="Todas las marcas"
+            hideAdd
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -259,8 +276,11 @@ export default function RepuestosPage() {
                       <span className="text-gray-500 text-xs">{formatCurrency(r.precioVenta)}</span>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <Badge variant="secondary" className="text-xs">{r.categoria?.nombre ?? "Sin categoría"}</Badge>
-                      <span className="text-xs text-gray-400">{r._count.compatibilidades} compat.</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Badge variant="secondary" className="text-xs">{r.categoria?.nombre ?? "Sin categoría"}</Badge>
+                        {r.marca && <Badge variant="outline" className="text-xs">{r.marca.nombre}</Badge>}
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0">{r._count.compatibilidades} compat.</span>
                     </div>
                   </CardContent>
                 </Card>

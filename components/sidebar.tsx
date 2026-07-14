@@ -5,22 +5,30 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Users, ClipboardList, FileText,
-  Package, LogOut, UserCog, Menu, X, Tag,
+  Package, LogOut, UserCog, Menu, X, Tag, Building2, BadgeDollarSign, AlertTriangle, BarChart2,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useEmpresa } from "@/lib/empresa-context";
 
 const navItems = [
-  { href: "/dashboard",    label: "Dashboard",          icon: LayoutDashboard, roles: ["ADMIN", "TECNICO"] },
-  { href: "/clientes",     label: "Clientes",           icon: Users,           roles: ["ADMIN"] },
-  { href: "/ordenes",      label: "Órdenes de Trabajo", icon: ClipboardList,   roles: ["ADMIN", "TECNICO"] },
-  { href: "/presupuestos", label: "Presupuestos",        icon: FileText,        roles: ["ADMIN"] },
-  { href: "/repuestos",    label: "Repuestos / Stock",   icon: Package,         roles: ["ADMIN", "TECNICO"] },
+  { href: "/dashboard",    label: "Dashboard",            icon: LayoutDashboard, roles: ["ADMIN", "TECNICO"] },
+  { href: "/empresa",      label: "Datos de Empresa",     icon: Building2,       roles: ["ADMIN"] },
+  { href: "/clientes",     label: "Clientes",             icon: Users,           roles: ["ADMIN"] },
+  { href: "/ordenes",      label: "Órdenes de Trabajo",   icon: ClipboardList,   roles: ["ADMIN", "TECNICO"] },
+  { href: "/presupuestos", label: "Presupuestos",          icon: FileText,        roles: ["ADMIN"] },
+  { href: "/categorias",   label: "Categorías de Repuestos", icon: Tag,           roles: ["ADMIN"] },
+  { href: "/repuestos",    label: "Repuestos / Stock",     icon: Package,         roles: ["ADMIN", "TECNICO"] },
+];
+
+const informesItems = [
+  { href: "/ordenes-pagar",   label: "Total Órdenes a Pagar", icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
+  { href: "/stock-bajo",      label: "Repuestos Stock Bajo",   icon: AlertTriangle,   roles: ["ADMIN", "TECNICO"] },
+  { href: "/consulta-stock",  label: "Consulta de Stock",      icon: BarChart2,       roles: ["ADMIN", "TECNICO"] },
 ];
 
 const adminItems = [
-  { href: "/usuarios",   label: "Usuarios",              icon: UserCog },
-  { href: "/categorias", label: "Categorías de Repuestos", icon: Tag },
+  { href: "/usuarios",   label: "Usuarios",                icon: UserCog },
 ];
 
 interface SidebarProps { role: string; userName: string; }
@@ -28,13 +36,17 @@ interface SidebarProps { role: string; userName: string; }
 function NavContent({ role, userName, pathname, onNav }: {
   role: string; userName: string; pathname: string; onNav?: () => void;
 }) {
+  const empresa = useEmpresa();
+  const logoSrc = empresa?.logoPath ?? "/logo.jpeg";
+  const nombreEmpresa = empresa?.nombre ?? "EyF-TechService";
+
   return (
     <div className="flex flex-col h-full text-white" style={{ background: "oklch(0.38 0.14 292)" }}>
       {/* Logo / título */}
       <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: "oklch(0.32 0.12 292)" }}>
-        <Image src="/logo.jpeg" alt="EyF-TechService" width={36} height={36} className="rounded" />
+        <Image src={logoSrc} alt={nombreEmpresa} width={36} height={36} className="rounded object-contain" unoptimized />
         <div>
-          <p className="font-bold text-sm leading-tight">EyF-TechService</p>
+          <p className="font-bold text-sm leading-tight">{nombreEmpresa}</p>
           <p className="text-xs" style={{ color: "oklch(0.80 0.06 292)" }}>Sistema de Gestión</p>
         </div>
       </div>
@@ -73,6 +85,38 @@ function NavContent({ role, userName, pathname, onNav }: {
             </Link>
           );
         })}
+
+        {informesItems.filter(item => item.roles.includes(role)).length > 0 && (
+          <>
+            <div className="px-3 pt-3 pb-1">
+              <p className="text-xs font-semibold uppercase px-2 mb-1" style={{ color: "oklch(0.75 0.06 292)" }}>
+                Informes
+              </p>
+            </div>
+            {informesItems.filter(item => item.roles.includes(role)).map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNav}
+                  className={cn(
+                    "flex items-center gap-2.5 mx-2 px-3 py-2 rounded text-xs font-medium transition-colors mb-0.5",
+                    active ? "text-white" : "hover:text-white"
+                  )}
+                  style={active
+                    ? { background: "oklch(0.55 0.14 292)" }
+                    : { color: "oklch(0.85 0.05 292)" }
+                  }
+                >
+                  <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </>
+        )}
 
         {role === "ADMIN" && (
           <>

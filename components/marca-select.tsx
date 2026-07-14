@@ -56,7 +56,7 @@ export function MarcaSelect({ value, onValueChange, placeholder = "Seleccionar m
         <Input
           autoFocus
           value={nuevaMarca}
-          onChange={e => setNuevaMarca(e.target.value)}
+          onChange={e => setNuevaMarca(e.target.value.toUpperCase())}
           placeholder="Nombre de la marca"
           onKeyDown={e => {
             if (e.key === "Enter") { e.preventDefault(); handleAddMarca(); }

@@ -7,19 +7,23 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Edit2, Save, X, Plus, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getEstadoOrden, getTipoEquipo, formatDate } from "@/lib/constants";
+
+const CONDICIONES_IVA = ["INSCRIPTO", "NO ALCANZADO", "MONOTRIBUTO", "EXCENTO", "CONS. FINAL"];
 
 interface Cliente {
   id: string;
   nombre: string;
   email: string | null;
   telefono: string | null;
+  condicionIva: string;
   dniCuit: string | null;
   direccion: string | null;
-  portalPassword: string | null;
+  tienePasswordPortal: boolean;
   activo: boolean;
   ordenes: Array<{
     id: string;
@@ -65,7 +69,6 @@ export default function ClienteDetailPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [showPwd, setShowPwd] = useState(false);
   const [showEditPwd, setShowEditPwd] = useState(false);
   const [cuitError, setCuitError] = useState("");
 
@@ -77,9 +80,10 @@ export default function ClienteDetailPage() {
       nombre: data.nombre,
       email: data.email ?? "",
       telefono: data.telefono ?? "",
+      condicionIva: data.condicionIva ?? "CONS. FINAL",
       dniCuit: data.dniCuit ?? "",
       direccion: data.direccion ?? "",
-      portalPassword: data.portalPassword ?? "",
+      portalPassword: "",
     });
   }
 
@@ -127,23 +131,25 @@ export default function ClienteDetailPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-        </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{cliente.nombre}</h1>
           {!cliente.activo && <Badge variant="destructive">Inactivo</Badge>}
         </div>
-        {!editing ? (
-          <Button variant="outline" onClick={() => { setShowEditPwd(false); setEditing(true); }}>
-            <Edit2 className="h-4 w-4 mr-1" /> Editar
+        <div className="flex flex-col items-end gap-2">
+          {!editing ? (
+            <Button variant="outline" onClick={() => { setShowEditPwd(false); setEditing(true); }}>
+              <Edit2 className="h-4 w-4 mr-1" /> Editar
+            </Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" />Guardar</Button>
+              <Button variant="outline" onClick={() => { setEditing(false); setCuitError(""); }}><X className="h-4 w-4" /></Button>
+            </div>
+          )}
+          <Button size="sm" className="self-end" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
           </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" />Guardar</Button>
-            <Button variant="outline" onClick={() => { setEditing(false); setCuitError(""); }}><X className="h-4 w-4" /></Button>
-          </div>
-        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -153,11 +159,20 @@ export default function ClienteDetailPage() {
             {editing ? (
               <>
                 <div className="space-y-1"><Label>Nombre / Razón Social</Label>
-                  <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} /></div>
+                  <Input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value.toUpperCase() })} /></div>
                 <div className="space-y-1"><Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+                  <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value.toLowerCase() })} /></div>
                 <div className="space-y-1"><Label>Teléfono</Label>
-                  <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} /></div>
+                  <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value.toUpperCase() })} /></div>
+                <div className="space-y-1">
+                  <Label>Condición IVA</Label>
+                  <Select value={form.condicionIva} onValueChange={v => setForm({ ...form, condicionIva: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CONDICIONES_IVA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1">
                   <Label>DNI / CUIT <span className="text-gray-400 text-xs">(sin guiones)</span></Label>
                   <Input
@@ -169,7 +184,7 @@ export default function ClienteDetailPage() {
                   {cuitError && <p className="text-xs text-red-500">{cuitError}</p>}
                 </div>
                 <div className="space-y-1"><Label>Dirección</Label>
-                  <Input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} /></div>
+                  <Input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value.toUpperCase() })} /></div>
                 <div className="space-y-1">
                   <Label>Contraseña portal <span className="text-gray-400 text-xs">(vacío = no cambiar)</span></Label>
                   <div className="relative">
@@ -191,21 +206,15 @@ export default function ClienteDetailPage() {
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Nombre:</dt><dd className="font-medium">{cliente.nombre}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Email:</dt><dd>{cliente.email ?? "-"}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Teléfono:</dt><dd>{cliente.telefono ?? "-"}</dd></div>
+                <div className="flex gap-2"><dt className="text-gray-500 w-28">Cond. IVA:</dt><dd>{cliente.condicionIva}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">DNI/CUIT:</dt><dd>{formatCuit(cliente.dniCuit)}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Dirección:</dt><dd>{cliente.direccion ?? "-"}</dd></div>
                 <Separator />
                 <div className="flex gap-2 items-center">
                   <dt className="text-gray-500 w-28">Contraseña portal:</dt>
                   <dd className="flex items-center gap-2 flex-1">
-                    {cliente.portalPassword ? (
-                      <>
-                        <span className="font-mono text-sm tracking-widest">
-                          {showPwd ? cliente.portalPassword : "••••••••"}
-                        </span>
-                        <button type="button" className="text-gray-400 hover:text-gray-700 ml-1" onClick={() => setShowPwd(s => !s)}>
-                          {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </>
+                    {cliente.tienePasswordPortal ? (
+                      <span className="text-gray-500 italic">Configurada (editar para cambiarla)</span>
                     ) : (
                       <span className="text-gray-400 italic">Sin contraseña</span>
                     )}

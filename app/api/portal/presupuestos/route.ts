@@ -10,16 +10,30 @@ export async function GET() {
 
   const clienteId = (session.user as any).id as string;
 
-  const presupuestos = await prisma.presupuesto.findMany({
-    where: { clienteId },
-    orderBy: { fecha: "desc" },
-    include: {
-      items: { select: { descripcion: true, cantidad: true, precioUnitario: true, precioTotal: true } },
-      orden: { select: { numero: true, modelo: true, marca: { select: { nombre: true } } } },
-    },
-  });
+  const [presupuestos, clienteRows] = await Promise.all([
+    prisma.presupuesto.findMany({
+      where: { clienteId },
+      orderBy: { fecha: "desc" },
+      include: {
+        items: { select: { descripcion: true, cantidad: true, precioUnitario: true, precioTotal: true } },
+        orden: { select: { numero: true, modelo: true, marca: { select: { nombre: true } } } },
+      },
+    }),
+    prisma.$queryRawUnsafe<any[]>(
+      `SELECT nombre, "condicionIva", telefono, direccion, "dniCuit" FROM "Cliente" WHERE id = $1`, clienteId
+    ),
+  ]);
 
-  return NextResponse.json(presupuestos);
+  const clienteData = clienteRows[0] ?? {};
+
+  return NextResponse.json(presupuestos.map(p => ({
+    ...p,
+    clienteNombre: clienteData.nombre ?? "",
+    clienteCondicionIva: clienteData.condicionIva ?? "CONS. FINAL",
+    clienteTelefono: clienteData.telefono ?? null,
+    clienteDireccion: clienteData.direccion ?? null,
+    clienteDniCuit: clienteData.dniCuit ?? null,
+  })));
 }
 
 export async function PUT(req: NextRequest) {

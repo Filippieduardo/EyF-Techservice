@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { EmpresaProvider } from "@/lib/empresa-context";
 
 export default async function AdminLayout({
   children,
@@ -17,13 +18,15 @@ export default async function AdminLayout({
   const userName = session.user?.name ?? "Usuario";
 
   return (
-    <div className="flex min-h-screen" style={{ background: "oklch(0.93 0.004 270)" }}>
-      <Sidebar role={role} userName={userName} />
-      {/* pt-14 on mobile to clear the fixed top bar; md:pt-0 restores desktop */}
-      <main className="flex-1 overflow-auto pt-14 md:pt-0">
-        {children}
-      </main>
-      <Toaster richColors />
-    </div>
+    <EmpresaProvider>
+      <div className="flex min-h-screen" style={{ background: "oklch(0.93 0.004 270)" }}>
+        <Sidebar role={role} userName={userName} />
+        {/* pt-14 on mobile to clear the fixed top bar; md:pt-0 restores desktop */}
+        <main className="flex-1 overflow-auto pt-14 md:pt-0">
+          {children}
+        </main>
+        <Toaster richColors />
+      </div>
+    </EmpresaProvider>
   );
 }

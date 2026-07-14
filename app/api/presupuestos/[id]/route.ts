@@ -14,12 +14,17 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     include: {
       cliente: true,
       items: { include: { repuesto: { select: { descripcion: true, numeroParte: true } } } },
-      orden: { select: { id: true, numero: true, modelo: true, marca: { select: { nombre: true } } } },
+      orden: { select: { id: true, numero: true, modelo: true, presupuestoAbonado: true, marca: { select: { nombre: true } } } },
     },
   });
 
   if (!presupuesto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-  return NextResponse.json(presupuesto);
+
+  const cRows = await prisma.$queryRawUnsafe<any[]>(`SELECT "condicionIva", "dniCuit" FROM "Cliente" WHERE id = $1`, presupuesto.clienteId);
+  const condicionIva = cRows[0]?.condicionIva ?? "CONS. FINAL";
+  const dniCuit = cRows[0]?.dniCuit ?? null;
+
+  return NextResponse.json({ ...presupuesto, cliente: { ...presupuesto.cliente, condicionIva, dniCuit } });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
