@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     ordenesEnProceso,
     ordenesTerminadas,
     totalClientes,
-    stockBajo,
+    repuestosStock,
     ordenesEntregadas,
     ordenesActivas,
     ordenesPorEstado,
@@ -34,12 +34,12 @@ export default async function DashboardPage() {
       where: { ...tecnicoFilter, fechaIngreso: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } },
     }),
     prisma.ordenTrabajo.count({
-      where: { ...tecnicoFilter, estado: { in: ["EN_DIAGNOSTICO", "ESPERANDO_REPUESTO", "EN_REPARACION", "RMA"] } },
+      where: { ...tecnicoFilter, estado: { in: ["EN_DIAGNOSTICO", "DIAGNOSTICADO", "ESPERANDO_REPUESTO", "EN_REPARACION", "RMA"] } },
     }),
     prisma.ordenTrabajo.count({ where: { ...tecnicoFilter, estado: "TERMINADO" } }),
     prisma.cliente.count({ where: { activo: true } }),
     prisma.repuesto.findMany({
-      where: { activo: true, stockActual: { lte: 5 } },
+      where: { activo: true },
       orderBy: { stockActual: "asc" },
       include: { categoria: { select: { nombre: true } } },
     }),
@@ -59,6 +59,9 @@ export default async function DashboardPage() {
       _count: { estado: true },
     }),
   ]);
+
+  const stockCero = repuestosStock.filter((r: any) => r.stockActual === 0);
+  const stockBajo = repuestosStock.filter((r: any) => r.stockActual > 0 && r.stockActual <= r.stockMinimo + 1);
 
   // Fetch presupuesto estados separately
   const allOrdenes = [...ordenesEntregadas, ...ordenesActivas] as any[];
@@ -80,6 +83,7 @@ export default async function DashboardPage() {
 
   const estadoColors: Record<string, string> = {
     INGRESADO:          "bg-green-600 text-white border-green-700",
+    SIN_DIAGNOSTICAR:   "bg-green-500 text-white font-bold border-green-600",
     EN_DIAGNOSTICO:     "bg-green-600 text-white border-green-700",
     DIAGNOSTICADO:      "bg-green-600 text-white border-green-700",
     ESPERANDO_REPUESTO: "bg-purple-600 text-white border-purple-700",
@@ -93,6 +97,7 @@ export default async function DashboardPage() {
 
   const estadoLabels: Record<string, string> = {
     INGRESADO:          "INGRESADO",
+    SIN_DIAGNOSTICAR:   "SIN DIAGNOSTICAR",
     EN_DIAGNOSTICO:     "EN DIAGNÓSTICO",
     DIAGNOSTICADO:      "DIAGNOSTICADO",
     ESPERANDO_REPUESTO: "ESPERANDO REPUESTO",
@@ -220,45 +225,57 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        <div>
-          <Card>
-            <CardHeader>
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
-              <CardTitle>Stock Bajo</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {stockBajo.length === 0 ? (
-                <p className="text-muted-foreground text-xs text-center py-6">✓ Todo el stock está OK</p>
-              ) : (
-                <div className="divide-y divide-border max-h-64 overflow-y-auto">
-                  {stockBajo.map((rep) => (
-                    <Link
-                      key={rep.id}
-                      href={`/repuestos/${rep.id}`}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate">{rep.descripcion}</p>
-                        <p className="text-xs text-muted-foreground">{rep.categoria?.nombre ?? "Sin categoría"}</p>
-                      </div>
-                      <span className="text-sm font-bold text-red-600 ml-2 flex-shrink-0">{rep.stockActual}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-              <div className="px-3 py-2 border-t bg-muted/20 flex items-center justify-between">
-                <Link href="/repuestos" className="text-xs text-primary hover:underline font-medium">
-                  Gestionar repuestos →
-                </Link>
-                {stockBajo.length > 0 && (
-                  <span className="text-xs text-muted-foreground">{stockBajo.length} ítems</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          <StockCard title="Stock Bajo" items={stockBajo} emptyMsg="✓ Todo el stock está OK" countColor="text-red-600" />
+          <StockCard title="Stock Cero" items={stockCero} emptyMsg="✓ Sin repuestos en cero" countColor="text-red-700" />
         </div>
       </div>
     </div>
+  );
+}
+
+function StockCard({ title, items, emptyMsg, countColor }: {
+  title: string;
+  items: any[];
+  emptyMsg: string;
+  countColor: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {items.length === 0 ? (
+          <p className="text-muted-foreground text-xs text-center py-6">{emptyMsg}</p>
+        ) : (
+          <div className="divide-y divide-border max-h-64 overflow-y-auto">
+            {items.map((rep) => (
+              <Link
+                key={rep.id}
+                href={`/repuestos/${rep.id}`}
+                className="flex items-center justify-between px-3 py-2 hover:bg-muted/30 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{rep.descripcion}</p>
+                  <p className="text-xs text-muted-foreground">{rep.categoria?.nombre ?? "Sin categoría"}</p>
+                </div>
+                <span className={`text-sm font-bold ml-2 flex-shrink-0 ${countColor}`}>{rep.stockActual}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+        <div className="px-3 py-2 border-t bg-muted/20 flex items-center justify-between">
+          <Link href="/repuestos" className="text-xs text-primary hover:underline font-medium">
+            Gestionar repuestos →
+          </Link>
+          {items.length > 0 && (
+            <span className="text-xs text-muted-foreground">{items.length} ítems</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

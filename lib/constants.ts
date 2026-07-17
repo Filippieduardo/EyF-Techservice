@@ -1,5 +1,6 @@
 export const ESTADOS_ORDEN = [
   { value: "INGRESADO",          label: "INGRESADO",          color: "bg-green-600 text-white" },
+  { value: "SIN_DIAGNOSTICAR",   label: "SIN DIAGNOSTICAR",   color: "bg-green-500 text-white font-bold" },
   { value: "EN_DIAGNOSTICO",     label: "EN DIAGNÓSTICO",     color: "bg-green-600 text-white" },
   { value: "DIAGNOSTICADO",      label: "DIAGNOSTICADO",      color: "bg-green-600 text-white" },
   { value: "ESPERANDO_REPUESTO", label: "ESPERANDO REPUESTO", color: "bg-purple-600 text-white" },

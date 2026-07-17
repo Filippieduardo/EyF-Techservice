@@ -212,11 +212,23 @@ export default function RepuestosPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
                     <Label>Precio Costo</Label>
-                    <Input type="number" min={0} step="0.01" value={form.precioCosto} onChange={e => setForm({...form, precioCosto: Number(e.target.value)})} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={form.precioCosto === 0 ? "" : form.precioCosto}
+                      onChange={e => setForm({...form, precioCosto: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0})}
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label>Precio Venta</Label>
-                    <Input type="number" min={0} step="0.01" value={form.precioVenta} onChange={e => setForm({...form, precioVenta: Number(e.target.value)})} />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={form.precioVenta === 0 ? "" : form.precioVenta}
+                      onChange={e => setForm({...form, precioVenta: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0})}
+                    />
                   </div>
                 </div>
                 <Button type="submit" className="w-full">Crear Repuesto</Button>

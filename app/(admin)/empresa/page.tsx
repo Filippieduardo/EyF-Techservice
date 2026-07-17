@@ -37,6 +37,7 @@ export default function EmpresaPage() {
     condicionIva: "INSCRIPTO",
     dniCuit: "",
     telefono: "",
+    telServTecnico: "",
     whatsapp: "",
     email: "",
   });
@@ -55,6 +56,7 @@ export default function EmpresaPage() {
             condicionIva: d.condicionIva ?? "INSCRIPTO",
             dniCuit: d.dniCuit ?? "",
             telefono: d.telefono ?? "",
+            telServTecnico: d.telServTecnico ?? "",
             whatsapp: d.whatsapp ?? "",
             email: d.email ?? "",
           });
@@ -211,7 +213,7 @@ export default function EmpresaPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Condición IVA</Label>
-              <Select value={form.condicionIva} onValueChange={(v) => set("condicionIva", v)}>
+              <Select value={form.condicionIva} onValueChange={(v) => v && set("condicionIva", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CONDICIONES_IVA.map((c) => (
@@ -234,13 +236,17 @@ export default function EmpresaPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Teléfono</Label>
+              <Label>Tel. Empresa</Label>
               <Input value={form.telefono} onChange={(e) => set("telefono", e.target.value.toUpperCase())} placeholder="0351-1234567" />
             </div>
             <div className="space-y-2">
-              <Label>WhatsApp</Label>
-              <Input value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value.toUpperCase())} placeholder="+54 9 351 123-4567" />
+              <Label>Tel. Serv. Técnico</Label>
+              <Input value={form.telServTecnico} onChange={(e) => set("telServTecnico", e.target.value.toUpperCase())} placeholder="0351-9999999" />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>WhatsApp</Label>
+            <Input value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value.toUpperCase())} placeholder="+54 9 351 123-4567" />
           </div>
 
           <div className="space-y-2">

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MarcaSelect } from "@/components/marca-select";
 import { ArrowLeft, Plus, Trash2, TrendingUp, TrendingDown, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -52,6 +52,7 @@ export default function RepuestoDetailPage() {
   const [compatForm, setCompatForm] = useState({ tipoEquipo: "", marcaId: "", modelo: "", numeroParteOem: "", notas: "" });
   const [movOpen, setMovOpen] = useState(false);
   const [compatOpen, setCompatOpen] = useState(false);
+  const [compatToDelete, setCompatToDelete] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function fetchRepuesto() {
@@ -208,11 +209,16 @@ export default function RepuestoDetailPage() {
                     <Label>Precio Costo</Label>
                     <Input
                       className="text-right"
-                      placeholder="$ 0,00"
-                      value={editForm._costEditing ? editForm.precioCosto : formatCurrency(editForm.precioCosto ?? 0)}
-                      onFocus={() => setEditForm((f: any) => ({ ...f, _costEditing: true }))}
-                      onBlur={() => setEditForm((f: any) => ({ ...f, _costEditing: false }))}
-                      onChange={e => setEditForm((f: any) => ({ ...f, precioCosto: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0 }))}
+                      placeholder={formatCurrency(editForm.precioCosto ?? 0)}
+                      value={editForm._costEditing ? (editForm._costDraft ?? "") : formatCurrency(editForm.precioCosto ?? 0)}
+                      onFocus={() => setEditForm((f: any) => ({ ...f, _costEditing: true, _costDraft: "" }))}
+                      onBlur={() => setEditForm((f: any) => {
+                        const typed = f._costDraft ?? "";
+                        const precioCosto = typed === "" ? f.precioCosto : (Number(typed.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0);
+                        return { ...f, _costEditing: false, precioCosto };
+                      })}
+                      onChange={e => setEditForm((f: any) => ({ ...f, _costDraft: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                     />
                   </div>
                 )}
@@ -221,11 +227,16 @@ export default function RepuestoDetailPage() {
                   {isAdmin ? (
                     <Input
                       className="text-right"
-                      placeholder="$ 0,00"
-                      value={editForm._ventaEditing ? editForm.precioVenta : formatCurrency(editForm.precioVenta ?? 0)}
-                      onFocus={() => setEditForm((f: any) => ({ ...f, _ventaEditing: true }))}
-                      onBlur={() => setEditForm((f: any) => ({ ...f, _ventaEditing: false }))}
-                      onChange={e => setEditForm((f: any) => ({ ...f, precioVenta: Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0 }))}
+                      placeholder={formatCurrency(editForm.precioVenta ?? 0)}
+                      value={editForm._ventaEditing ? (editForm._ventaDraft ?? "") : formatCurrency(editForm.precioVenta ?? 0)}
+                      onFocus={() => setEditForm((f: any) => ({ ...f, _ventaEditing: true, _ventaDraft: "" }))}
+                      onBlur={() => setEditForm((f: any) => {
+                        const typed = f._ventaDraft ?? "";
+                        const precioVenta = typed === "" ? f.precioVenta : (Number(typed.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0);
+                        return { ...f, _ventaEditing: false, precioVenta };
+                      })}
+                      onChange={e => setEditForm((f: any) => ({ ...f, _ventaDraft: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
                     />
                   ) : (
                     <p className="border rounded px-3 py-2 text-sm font-medium">{formatCurrency(editForm.precioVenta ?? 0)}</p>
@@ -297,7 +308,7 @@ export default function RepuestoDetailPage() {
                         {c.numeroParteOem && <span className="text-blue-600 ml-1 text-xs">({c.numeroParteOem})</span>}
                       </div>
                       {isAdmin && (
-                        <Button size="sm" variant="ghost" onClick={() => deleteCompat(c.id)}>
+                        <Button size="sm" variant="ghost" onClick={() => setCompatToDelete(c.id)}>
                           <Trash2 className="h-3 w-3 text-red-400" />
                         </Button>
                       )}
@@ -339,7 +350,15 @@ export default function RepuestoDetailPage() {
                         </div>
                         <div className="space-y-1">
                           <Label>Cantidad</Label>
-                          <Input type="number" min={1} value={movForm.cantidad} onChange={e => setMovForm({ ...movForm, cantidad: Number(e.target.value) })} />
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={movForm.cantidad}
+                            onFocus={e => e.target.select()}
+                            onClick={e => (e.target as HTMLInputElement).select()}
+                            onChange={e => setMovForm({ ...movForm, cantidad: Math.max(1, Number(e.target.value.replace(/[^0-9]/g, "")) || 1) })}
+                            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                          />
                         </div>
                         <div className="space-y-1">
                           <Label>Notas</Label>
@@ -396,6 +415,28 @@ export default function RepuestoDetailPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={!!compatToDelete} onOpenChange={(open) => !open && setCompatToDelete(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar compatibilidad</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-500">¿Estás seguro que querés eliminar esta compatibilidad? Esta acción no se puede deshacer.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompatToDelete(null)}>No</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                const compatId = compatToDelete;
+                setCompatToDelete(null);
+                await deleteCompat(compatId!);
+              }}
+            >
+              Sí, eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Edit2, Save, X, Plus, Eye, EyeOff } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ArrowLeft, Edit2, Save, X, Plus, Eye, EyeOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { getEstadoOrden, getTipoEquipo, formatDate } from "@/lib/constants";
@@ -20,9 +21,11 @@ interface Cliente {
   nombre: string;
   email: string | null;
   telefono: string | null;
+  whatsapp: string | null;
   condicionIva: string;
   dniCuit: string | null;
   direccion: string | null;
+  portalPassword: string | null;
   tienePasswordPortal: boolean;
   activo: boolean;
   ordenes: Array<{
@@ -32,6 +35,7 @@ interface Cliente {
     tipoEquipo: string;
     modelo: string | null;
     fechaIngreso: string;
+    fechaCierre: string | null;
     marca: { nombre: string } | null;
   }>;
   presupuestos: Array<{
@@ -70,7 +74,9 @@ export default function ClienteDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
   const [showEditPwd, setShowEditPwd] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
   const [cuitError, setCuitError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function fetchCliente() {
     const res = await window.fetch(`/api/clientes/${id}`);
@@ -80,10 +86,11 @@ export default function ClienteDetailPage() {
       nombre: data.nombre,
       email: data.email ?? "",
       telefono: data.telefono ?? "",
+      whatsapp: data.whatsapp ?? "",
       condicionIva: data.condicionIva ?? "CONS. FINAL",
       dniCuit: data.dniCuit ?? "",
       direccion: data.direccion ?? "",
-      portalPassword: "",
+      portalPassword: data.portalPassword ?? "",
     });
   }
 
@@ -126,6 +133,17 @@ export default function ClienteDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    const res = await window.fetch(`/api/clientes/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Cliente eliminado");
+      router.back();
+    } else {
+      const err = await res.json();
+      toast.error(err.error ?? "No se puede eliminar");
+    }
+  }
+
   if (!cliente) return <div className="p-6 text-gray-400">Cargando...</div>;
 
   return (
@@ -136,16 +154,23 @@ export default function ClienteDetailPage() {
           {!cliente.activo && <Badge variant="destructive">Inactivo</Badge>}
         </div>
         <div className="flex flex-col items-end gap-2">
-          {!editing ? (
-            <Button variant="outline" onClick={() => { setShowEditPwd(false); setEditing(true); }}>
-              <Edit2 className="h-4 w-4 mr-1" /> Editar
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" />Guardar</Button>
-              <Button variant="outline" onClick={() => { setEditing(false); setCuitError(""); }}><X className="h-4 w-4" /></Button>
-            </div>
-          )}
+          <div className="flex gap-2 items-center">
+            {!editing ? (
+              <Button variant="outline" onClick={() => { setShowEditPwd(false); setEditing(true); }}>
+                <Edit2 className="h-4 w-4 mr-1" /> Editar
+              </Button>
+            ) : (
+              <>
+                <Button onClick={handleSave}><Save className="h-4 w-4 mr-1" />Guardar</Button>
+                <Button variant="outline" onClick={() => { setEditing(false); setCuitError(""); }}><X className="h-4 w-4" /></Button>
+              </>
+            )}
+            {!editing && cliente.ordenes.length === 0 && (
+              <button type="button" title="Eliminar cliente" className="text-red-500 hover:text-red-700 transition-colors" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="h-5 w-5" />
+              </button>
+            )}
+          </div>
           <Button size="sm" className="self-end" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Volver
           </Button>
@@ -164,6 +189,8 @@ export default function ClienteDetailPage() {
                   <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value.toLowerCase() })} /></div>
                 <div className="space-y-1"><Label>Teléfono</Label>
                   <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value.toUpperCase() })} /></div>
+                <div className="space-y-1"><Label>WhatsApp</Label>
+                  <Input value={form.whatsapp} onChange={e => setForm({ ...form, whatsapp: e.target.value.toUpperCase() })} /></div>
                 <div className="space-y-1">
                   <Label>Condición IVA</Label>
                   <Select value={form.condicionIva} onValueChange={v => setForm({ ...form, condicionIva: v })}>
@@ -186,13 +213,13 @@ export default function ClienteDetailPage() {
                 <div className="space-y-1"><Label>Dirección</Label>
                   <Input value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value.toUpperCase() })} /></div>
                 <div className="space-y-1">
-                  <Label>Contraseña portal <span className="text-gray-400 text-xs">(vacío = no cambiar)</span></Label>
+                  <Label>Contraseña portal</Label>
                   <div className="relative">
                     <Input
                       type={showEditPwd ? "text" : "password"}
                       value={form.portalPassword}
                       onChange={e => setForm({ ...form, portalPassword: e.target.value })}
-                      placeholder="Nueva contraseña (mín. 6 caracteres)"
+                      placeholder="••••••••"
                       className="pr-10"
                     />
                     <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" onClick={() => setShowEditPwd(s => !s)}>
@@ -206,15 +233,30 @@ export default function ClienteDetailPage() {
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Nombre:</dt><dd className="font-medium">{cliente.nombre}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Email:</dt><dd>{cliente.email ?? "-"}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Teléfono:</dt><dd>{cliente.telefono ?? "-"}</dd></div>
+                <div className="flex gap-2"><dt className="text-gray-500 w-28">WhatsApp:</dt><dd>{cliente.whatsapp ?? "-"}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Cond. IVA:</dt><dd>{cliente.condicionIva}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">DNI/CUIT:</dt><dd>{formatCuit(cliente.dniCuit)}</dd></div>
                 <div className="flex gap-2"><dt className="text-gray-500 w-28">Dirección:</dt><dd>{cliente.direccion ?? "-"}</dd></div>
                 <Separator />
-                <div className="flex gap-2 items-center">
-                  <dt className="text-gray-500 w-28">Contraseña portal:</dt>
-                  <dd className="flex items-center gap-2 flex-1">
-                    {cliente.tienePasswordPortal ? (
-                      <span className="text-gray-500 italic">Configurada (editar para cambiarla)</span>
+                <div className="flex gap-2 items-start">
+                  <dt className="text-gray-500 w-28 pt-1.5">Contraseña portal:</dt>
+                  <dd className="flex-1">
+                    {cliente.portalPassword ? (
+                      <div className="relative max-w-xs">
+                        <Input
+                          readOnly
+                          type={showPwd ? "text" : "password"}
+                          value={cliente.portalPassword}
+                          className="pr-10 bg-gray-50 font-mono"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                          onClick={() => setShowPwd(s => !s)}
+                        >
+                          {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-gray-400 italic">Sin contraseña</span>
                     )}
@@ -251,7 +293,8 @@ export default function ClienteDetailPage() {
                       </div>
                       <div className="text-right">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${estado.color}`}>{estado.label}</span>
-                        <p className="text-xs text-gray-400 mt-0.5">{formatDate(o.fechaIngreso)}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Ingreso: {formatDate(o.fechaIngreso)}</p>
+                        {o.fechaCierre && <p className="text-xs text-green-600 mt-0.5">Entrega: {formatDate(o.fechaCierre)}</p>}
                       </div>
                     </Link>
                   );
@@ -261,6 +304,21 @@ export default function ClienteDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro desea eliminar al cliente <strong>{cliente.nombre}</strong>? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

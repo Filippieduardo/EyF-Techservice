@@ -86,7 +86,7 @@ interface OrdenPortal {
 interface PresPortal {
   id: string; numero: string; estado: string;
   subtotal: number; descuento: number; total: number;
-  fecha: string; validezDias: number; notas: string | null;
+  fecha: string; validezDias: number; notas: string | null; observacionesCliente: string | null;
   clienteNombre: string; clienteCondicionIva: string;
   clienteTelefono: string | null; clienteDireccion: string | null; clienteDniCuit: string | null;
   items: Array<{ descripcion: string; cantidad: number; precioUnitario: number; precioTotal: number }>;
@@ -223,6 +223,11 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
               <div style={{ fontWeight: "bold", fontSize: "9pt" }}>
                 {(numeroALetras(totalGeneral).charAt(0).toUpperCase() + numeroALetras(totalGeneral).slice(1))}.--
               </div>
+              {pres.observacionesCliente && (
+                <div style={{ marginTop: "8px", fontSize: "8pt", color: "#333", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
+                  <strong>Observaciones:</strong> {pres.observacionesCliente}
+                </div>
+              )}
               {pres.notas && (
                 <div style={{ marginTop: "8px", fontSize: "8pt", color: "#444", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
                   <strong>Notas:</strong> {pres.notas}
@@ -470,6 +475,12 @@ export default function PortalPage() {
                         <div className="flex justify-between px-4 py-2 font-bold text-base bg-gray-100 border-t"><span>TOTAL</span><span>{formatCurrency(totalGeneral)}</span></div>
                       </div>
 
+                      {p.observacionesCliente && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-gray-700">
+                          <p className="font-semibold text-xs text-green-700 mb-1">Observaciones:</p>
+                          {p.observacionesCliente}
+                        </div>
+                      )}
                       {p.notas && <p className="text-sm text-gray-600 italic border-l-2 border-gray-300 pl-3">{p.notas}</p>}
 
                       {/* Acciones */}

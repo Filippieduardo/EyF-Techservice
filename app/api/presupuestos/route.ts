@@ -16,6 +16,7 @@ const presupuestoSchema = z.object({
   validezDias: z.number().int().min(1).default(30),
   descuento: z.number().min(0).default(0),
   notas: z.string().optional(),
+  observacionesCliente: z.string().optional(),
   items: z.array(itemSchema).min(1),
 });
 
@@ -95,6 +96,13 @@ export async function POST(req: NextRequest) {
     },
     include: { items: true },
   });
+
+  if (data.observacionesCliente) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Presupuesto" SET "observacionesCliente" = $1 WHERE id = $2`,
+      data.observacionesCliente, presupuesto.id
+    );
+  }
 
   if (data.ordenId) {
     await prisma.ordenTrabajo.update({

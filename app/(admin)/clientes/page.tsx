@@ -9,7 +9,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Users, Phone, Mail, FileText, Eye, EyeOff } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, Search, Users, Phone, Mail, FileText, Eye, EyeOff, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -52,9 +53,10 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
-    nombre: "", email: "", telefono: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "",
+    nombre: "", email: "", telefono: "", whatsapp: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "",
   });
   const [cuitError, setCuitError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
 
   async function fetchClientes(query = "") {
     setLoading(true);
@@ -95,11 +97,24 @@ export default function ClientesPage() {
     if (res.ok) {
       toast.success("Cliente creado");
       setOpen(false);
-      setForm({ nombre: "", email: "", telefono: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "" });
+      setForm({ nombre: "", email: "", telefono: "", whatsapp: "", condicionIva: "CONS. FINAL", dniCuit: "", direccion: "", portalPassword: "" });
       setCuitError("");
       fetchClientes(q);
     } else {
       toast.error("Error al crear cliente");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    const res = await fetch(`/api/clientes/${deleteTarget.id}`, { method: "DELETE" });
+    setDeleteTarget(null);
+    if (res.ok) {
+      toast.success("Cliente eliminado");
+      fetchClientes(q);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error ?? "No se puede eliminar");
     }
   }
 
@@ -129,10 +144,14 @@ export default function ClientesPage() {
                 <Label>Teléfono</Label>
                 <Input value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value.toUpperCase() })} />
               </div>
+              <div className="space-y-1">
+                <Label>WhatsApp <span className="text-gray-400 text-xs">(se completa con teléfono si se deja vacío)</span></Label>
+                <Input value={form.whatsapp} onChange={e => setForm({ ...form, whatsapp: e.target.value.toUpperCase() })} placeholder={form.telefono || "0351-9999999"} />
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label>Condición IVA</Label>
-                  <Select value={form.condicionIva} onValueChange={v => setForm({ ...form, condicionIva: v })}>
+                  <Select value={form.condicionIva} onValueChange={v => setForm({ ...form, condicionIva: v ?? form.condicionIva })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {CONDICIONES_IVA.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -202,37 +221,63 @@ export default function ClientesPage() {
       ) : (
         <div className="grid gap-3">
           {clientes.map((c) => (
-            <Link key={c.id} href={`/clientes/${c.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-blue-100 rounded-full h-10 w-10 flex items-center justify-center">
-                        <span className="text-blue-700 font-semibold">{c.nombre.charAt(0).toUpperCase()}</span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{c.nombre}</p>
-                        <div className="flex gap-3 text-sm text-gray-500">
-                          {c.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>}
-                          {c.telefono && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{c.telefono}</span>}
-                          {c.dniCuit && <span>{formatCuit(c.dniCuit)}</span>}
+            <div key={c.id} className="relative">
+              <Link href={`/clientes/${c.id}`}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-100 rounded-full h-10 w-10 flex items-center justify-center">
+                          <span className="text-blue-700 font-semibold">{c.nombre.charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{c.nombre}</p>
+                          <div className="flex gap-3 text-sm text-gray-500">
+                            {c.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{c.email}</span>}
+                            {c.telefono && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{c.telefono}</span>}
+                            {c.dniCuit && <span>{formatCuit(c.dniCuit)}</span>}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-3 pr-8">
+                        <span className="flex items-center gap-1 text-sm text-gray-500">
+                          <FileText className="h-4 w-4" />
+                          {c._count.ordenes} orden{c._count.ordenes !== 1 ? "es" : ""}
+                        </span>
+                        {!c.activo && <Badge variant="destructive">Inactivo</Badge>}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-sm text-gray-500">
-                        <FileText className="h-4 w-4" />
-                        {c._count.ordenes} orden{c._count.ordenes !== 1 ? "es" : ""}
-                      </span>
-                      {!c.activo && <Badge variant="destructive">Inactivo</Badge>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+              {c._count.ordenes === 0 && (
+                <button
+                  type="button"
+                  title="Eliminar cliente"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors z-10"
+                  onClick={e => { e.preventDefault(); setDeleteTarget(c); }}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro desea eliminar al cliente <strong>{deleteTarget?.nombre}</strong>? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

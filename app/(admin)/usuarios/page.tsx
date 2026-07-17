@@ -7,7 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, UserCog, Eye, EyeOff, Edit2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Plus, UserCog, Eye, EyeOff, Edit2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Usuario {
@@ -30,6 +31,7 @@ export default function UsuariosPage() {
   const [editForm, setEditForm] = useState({ nombre: "", email: "", role: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
   const [showEditPwd, setShowEditPwd] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
 
   async function fetchUsuarios() {
     const res = await fetch("/api/usuarios");
@@ -84,6 +86,19 @@ export default function UsuariosPage() {
     } else {
       const err = await res.json();
       toast.error(err.error ?? "Error al actualizar");
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    const res = await fetch(`/api/usuarios/${deleteTarget.id}`, { method: "DELETE" });
+    setDeleteTarget(null);
+    if (res.ok) {
+      toast.success("Usuario eliminado");
+      fetchUsuarios();
+    } else {
+      const err = await res.json();
+      toast.error(err.error ?? "No se puede eliminar");
     }
   }
 
@@ -148,6 +163,14 @@ export default function UsuariosPage() {
                   >
                     {u.activo ? "Desactivar" : "Activar"}
                   </Button>
+                  <button
+                    type="button"
+                    title="Eliminar usuario"
+                    className="text-gray-300 hover:text-red-500 transition-colors"
+                    onClick={() => setDeleteTarget(u)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </CardContent>
@@ -204,6 +227,22 @@ export default function UsuariosPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Confirmar Eliminar */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro desea eliminar al usuario <strong>{deleteTarget?.nombre}</strong>? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Dialog Editar */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
@@ -230,7 +269,7 @@ export default function UsuariosPage() {
                   value={editForm.password}
                   onChange={e => setEditForm({ ...editForm, password: e.target.value })}
                   minLength={6}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="••••••••"
                   className="pr-10"
                 />
                 <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700" onClick={() => setShowEditPwd(s => !s)}>

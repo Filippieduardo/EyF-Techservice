@@ -14,6 +14,7 @@ enum UserRole {
 
 enum EstadoOrden {
   INGRESADO
+  SIN_DIAGNOSTICAR
   EN_DIAGNOSTICO
   DIAGNOSTICADO
   ESPERANDO_REPUESTO
@@ -56,17 +57,18 @@ enum UbicacionActual {
 }
 
 model Empresa {
-  id           String   @id @default(cuid())
-  nombre       String
-  domicilio    String?
-  condicionIva String   @default("INSCRIPTO")
-  dniCuit      String?
-  telefono     String?
-  whatsapp     String?
-  email        String?
-  logoPath     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  nombre          String
+  domicilio       String?
+  condicionIva    String   @default("INSCRIPTO")
+  dniCuit         String?
+  telefono        String?
+  telServTecnico  String?
+  whatsapp        String?
+  email           String?
+  logoPath        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model User {
@@ -89,6 +91,7 @@ model Cliente {
   nombre          String
   email           String?  @unique
   telefono        String?
+  whatsapp        String?
   condicionIva    String   @default("CONS. FINAL")
   dniCuit         String?
   direccion       String?
@@ -121,6 +124,7 @@ model OrdenTrabajo {
   fechaCierre      DateTime?
   ubicacionActual  UbicacionActual @default(LOCAL)
   estado           EstadoOrden @default(INGRESADO)
+  fechaCambioEstado DateTime?
   tipoEquipo       TipoEquipo
   marcaId          String?
   modelo           String?

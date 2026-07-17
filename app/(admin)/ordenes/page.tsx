@@ -16,6 +16,7 @@ interface Orden {
   tipoEquipo: string;
   modelo: string | null;
   fechaIngreso: string;
+  fechaCambioEstado: string | null;
   fechaEnvio: string | null;
   ubicacionActual: string;
   presupuestoId: string | null;
@@ -136,6 +137,8 @@ function OrdenGrilla({ titulo, ordenes }: { titulo: string; ordenes: Orden[] }) 
                     </span>
                   ) : o.presupuestoId ? (
                     <span className="text-xs px-2 py-0.5 rounded font-bold bg-sky-400 text-black">PRESUPUESTO</span>
+                  ) : ["INGRESADO", "SIN_DIAGNOSTICAR", "EN_DIAGNOSTICO"].includes(o.estado) ? (
+                    <span className="text-xs px-2 py-0.5 rounded font-bold bg-red-600 text-white">NO PRESUPUESTADA</span>
                   ) : (
                     <span className="text-xs px-2 py-0.5 rounded font-bold bg-pink-600 text-black">NO PRES.</span>
                   )}
@@ -147,8 +150,9 @@ function OrdenGrilla({ titulo, ordenes }: { titulo: string; ordenes: Orden[] }) 
                     {o.ubicacionActual === "TALLER" ? "TALLER" : "LOCAL"}
                   </span>
                 </span>
-                <span>
+                <span className="flex flex-col gap-0.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estado.color}`}>{estado.label}</span>
+                  {o.fechaCambioEstado && <span className="text-xs text-gray-400 pl-1">{formatDate(o.fechaCambioEstado)}</span>}
                 </span>
               </div>
               {/* Mobile fallback */}
@@ -166,6 +170,8 @@ function OrdenGrilla({ titulo, ordenes }: { titulo: string; ordenes: Orden[] }) 
                         <span className={`text-xs px-2 py-0.5 rounded font-bold ${getEstadoPresupuesto(o.presupuesto.estado).color}`}>
                           {getEstadoPresupuesto(o.presupuesto.estado).label}
                         </span>
+                      ) : ["INGRESADO", "SIN_DIAGNOSTICAR", "EN_DIAGNOSTICO"].includes(o.estado) ? (
+                        <span className="text-xs px-2 py-0.5 rounded font-bold bg-red-600 text-white">NO PRESUPUESTADA</span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded font-bold bg-pink-600 text-black">NO PRES.</span>
                       )}
@@ -177,6 +183,7 @@ function OrdenGrilla({ titulo, ordenes }: { titulo: string; ordenes: Orden[] }) 
                       <span className={`text-xs px-3 py-1 rounded-full font-medium ${estado.color}`}>
                         {estado.label}
                       </span>
+                      {o.fechaCambioEstado && <span className="text-xs text-gray-400">{formatDate(o.fechaCambioEstado)}</span>}
                     </div>
                   </div>
                 </CardContent>

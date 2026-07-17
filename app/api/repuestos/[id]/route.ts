@@ -103,28 +103,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body = await req.json();
 
   if (body.action === "movimiento") {
-    const userId = (session.user as any).id as string;
-    const delta = body.tipo === "ENTRADA" ? body.cantidad : -body.cantidad;
+    try {
+      const userId = (session.user as any).id as string;
+      const delta = body.tipo === "ENTRADA" ? body.cantidad : -body.cantidad;
 
-    const [movimiento, repuesto] = await prisma.$transaction([
-      prisma.movimientoStock.create({
-        data: {
-          repuestoId: id,
-          tipo: body.tipo,
-          cantidad: body.cantidad,
-          precioUnitario: body.precioUnitario || null,
-          referencia: body.referencia || null,
-          notas: body.notas || null,
-          userId,
-        },
-      }),
-      prisma.repuesto.update({
-        where: { id },
-        data: { stockActual: { increment: delta } },
-      }),
-    ]);
+      const [movimiento, repuesto] = await prisma.$transaction([
+        prisma.movimientoStock.create({
+          data: {
+            repuestoId: id,
+            tipo: body.tipo,
+            cantidad: body.cantidad,
+            precioUnitario: body.precioUnitario || null,
+            referencia: body.referencia || null,
+            notas: body.notas || null,
+            userId,
+          },
+        }),
+        prisma.repuesto.update({
+          where: { id },
+          data: { stockActual: { increment: delta } },
+        }),
+      ]);
 
-    return NextResponse.json({ movimiento, repuesto });
+      return NextResponse.json({ movimiento, repuesto });
+    } catch (e: any) {
+      console.error("[POST /api/repuestos/[id]] movimiento", e);
+      return NextResponse.json({ error: e?.message ?? "Error al registrar movimiento" }, { status: 500 });
+    }
   }
 
   if (body.action === "compatibilidad") {

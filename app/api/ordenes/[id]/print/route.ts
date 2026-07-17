@@ -36,7 +36,7 @@ function buildPdf(orden: any, empresa: any): Promise<Buffer> {
       drawCopy(doc, orden, empresa, 10, "CLIENTE");
 
       // Línea de corte
-      const cutY = 418;
+      const cutY = 420;
       doc.save();
       doc.dash(3, { space: 3 });
       doc.moveTo(28, cutY).lineTo(567, cutY).lineWidth(0.5).strokeColor("#888888").stroke();
@@ -65,26 +65,31 @@ function drawCopy(doc: any, orden: any, empresa: any, offsetY: number, tipo: "CL
   let y = offsetY;
 
   // ── ENCABEZADO ────────────────────────────────────────────────────────
-  doc.rect(L, y, W, 36).stroke(BLACK);
+  doc.rect(L, y, W, 46).stroke(BLACK);
 
   // Logo empresa
   const logoFile = empresa?.logoPath
     ? path.join(process.cwd(), "public", empresa.logoPath)
     : path.join(process.cwd(), "public", "logo.jpeg");
-  try { doc.image(logoFile, L + 4, y + 4, { width: 28, height: 28 }); } catch {}
+  try { doc.image(logoFile, L + 4, y + 4, { width: 36, height: 36 }); } catch {}
 
   const empNombre = empresa?.nombre ?? "EyF TechService";
-  doc.font(BOLD).fontSize(13).fillColor(BLACK).text(empNombre, L + 36, y + 5, { width: 260, lineBreak: false });
-  doc.font(REG).fontSize(7).fillColor(DGRAY).text(empresa?.domicilio ?? "", L + 36, y + 20, { width: 260 });
+  doc.font(BOLD).fontSize(13).fillColor(BLACK).text(empNombre, L + 44, y + 5, { width: 260, lineBreak: false });
+  doc.font(REG).fontSize(7).fillColor(DGRAY)
+     .text(empresa?.domicilio ?? "", L + 44, y + 20, { width: 260, lineBreak: false });
+  if (empresa?.telefono) {
+    doc.font(REG).fontSize(7).fillColor(DGRAY)
+       .text(empresa.telefono, L + 44, y + 31, { width: 260, lineBreak: false });
+  }
 
   const waIcon = path.join(process.cwd(), "public", "icons", "WHATSAPP.png");
-  try { doc.image(waIcon, R - 148, y + 7, { width: 22, height: 22 }); } catch {}
-  const tel  = empresa?.telefono  ? `Tel: ${empresa.telefono}` : "";
-  const whap = empresa?.whatsapp  ? `WA: ${empresa.whatsapp}`  : "";
+  try { doc.image(waIcon, R - 148, y + 11, { width: 22, height: 22 }); } catch {}
+  const ventasLabel   = empresa?.whatsapp      ? `Ventas: ${empresa.whatsapp}`         : "";
+  const stLabel       = empresa?.telServTecnico ? `S.Tecnico: ${empresa.telServTecnico}` : "";
   doc.font(REG).fontSize(7).fillColor(DGRAY)
-     .text(tel,  R - 123, y + 8,  { width: 121 })
-     .text(whap, R - 123, y + 18, { width: 121 });
-  y += 36;
+     .text(ventasLabel, R - 123, y + 12, { width: 121 })
+     .text(stLabel,     R - 123, y + 24, { width: 121 });
+  y += 46;
 
   // ── BARRA ORDEN ───────────────────────────────────────────────────────
   doc.rect(L, y, W, 17).fill(BLACK);
@@ -131,63 +136,92 @@ function drawCopy(doc: any, orden: any, empresa: any, offsetY: number, tipo: "CL
   doc.font(BOLD).fontSize(7.5).fillColor(BLACK).text("Información Técnica:", L + 3, y + 2);
   y += 11;
 
-  // Problema
+  // Problema (expandido: sin Trabajo Realizado)
   const problema = (orden.descripcionProblema ?? "").trim();
-  const probH = Math.max(28, doc.heightOfString(problema || " ", { width: W - 60, fontSize: 8 }) + 10);
+  const probH = Math.max(50, doc.heightOfString(problema || " ", { width: W - 60, fontSize: 8 }) + 10);
   doc.rect(L, y, W, probH).stroke("#cccccc");
   doc.font(BOLD).fontSize(8).fillColor(BLACK).text("Problema:", L + 4, y + 4);
   if (problema) doc.font(REG).fontSize(8).text(problema, L + 58, y + 4, { width: W - 64 });
   y += probH;
 
-  // Trabajo Realizado
-  const trabajo = (orden.trabajoRealizado ?? "").trim();
-  const traH = Math.max(32, doc.heightOfString(trabajo || " ", { width: W - 90, fontSize: 8 }) + 10);
-  doc.rect(L, y, W, traH).stroke("#cccccc");
-  doc.font(BOLD).fontSize(8).fillColor(BLACK).text("Trabajo\nRealizado:", L + 4, y + 4);
-  if (trabajo) doc.font(REG).fontSize(8).text(trabajo, L + 90, y + 4, { width: W - 96 });
-  y += traH;
-
   // ── FOOTER ────────────────────────────────────────────────────────────
   if (tipo === "CLIENTE") {
-    const garantiaBody =
+    const parte1 =
       "- Deficiencias en la instalación eléctrica en el domicilio del usuario, tales como cortocircuitos, excesos o caídas de tensión, tormentas, etc.\n" +
       "- Inundaciones, incendios, golpes o accidentes de cualquier naturaleza.  - Uso no conforme a lo especificado en el manual de instrucciones.\n" +
       "- Fallas no especificadas en la órden de trabajo y ajenas a la reparación actual.\n" +
       "La presente garantía dejará de tener validez cuando:\n" +
-      "- Personal no autorizado haya revisado o reparado el equipo luego de ser retirado.  - Si hubiera dañado, alterado o retirado la faja de garantía.\n" +
-      "LA PRESENTE GARANTÍA CADUCA A LOS 30 (treinta) DÍAS DE RETIRADO EL EQUIPAMIENTO\n" +
-      "MUY IMPORTANTE: Si el equipo no fuese retirado dentro de los 90 (Noventa) días del Ingreso, se considerará abandonado, " +
-      "facultando a EyF TechService a disponer del mismo, desistiendo EL CLIENTE de realizar cualquier tipo de reclamo o solicitar indemnización alguna.\n" +
+      "- Personal no autorizado haya revisado o reparado el equipo luego de ser retirado.  - Si hubiera dañado, alterado o retirado la faja de garantía.\n";
+    const parte2 = "LA PRESENTE GARANTÍA CADUCA A LOS 30 (treinta) DÍAS DE RETIRADO EL EQUIPAMIENTO\n";
+    const parte3 = "MUY IMPORTANTE: Si el equipo no fuese retirado dentro de los ";
+    const parte4 = "90 (Noventa) días";
+    const parte5 =
+      " del Ingreso, se considerará abandonado, facultando a EyF TechService a disponer del mismo, desistiendo EL CLIENTE de realizar cualquier tipo de reclamo o solicitar indemnización alguna.\n" +
       "En la fecha, y en un todo de acuerdo con lo antedicho, EL CLIENTE firma la presente Orden, dando así su total consentimiento.";
 
-    const bodyH = doc.heightOfString(garantiaBody, { width: W - 8, fontSize: 8.8 }) + 36;
-    const boxH  = 14 + bodyH;
+    const garantiaFull = parte1 + parte2 + parte3 + parte4 + parte5;
+    const bodyH = doc.heightOfString(garantiaFull, { width: W - 8, fontSize: 8.8 }) + 36;
+    const presAbonado = Number(orden.presupuestoAbonado ?? 0);
+    const headerRowH = presAbonado > 0 ? 28 : 18;
+    const boxH  = headerRowH + bodyH;
     doc.rect(L, y, W, boxH).stroke(BLACK);
 
-    // Fila superior: etiqueta | importe+estado
+    // Fila superior: etiqueta | estado + presupuesto abonado
     const half = W / 2;
-    doc.rect(L, y, half, 14).fill(LGRAY).stroke("#cccccc");
-    doc.rect(L + half, y, half, 14).fill(BLACK);
+    doc.rect(L, y, half, headerRowH).fill(LGRAY).stroke("#cccccc");
+    doc.rect(L + half, y, half, headerRowH).fill(BLACK);
     doc.font(BOLD).fontSize(7.5).fillColor(BLACK)
        .text("La presente garantía no ampara desperfectos por:", L + 4, y + 3, { width: half - 8, lineBreak: false });
     const estadoLabel = (orden.estado ?? "").replace(/_/g, " ");
     doc.font(BOLD).fontSize(8).fillColor("#ffffff")
-       .text(`Importe $: ${fmtMonto(orden.costoTecnico)}     Estado: ${estadoLabel}`,
-             L + half + 4, y + 3, { width: half - 8 });
-    y += 14;
+       .text(`Estado: ${estadoLabel}`, L + half + 4, y + 3, { width: half - 8, lineBreak: false });
+    if (presAbonado > 0) {
+      doc.font(BOLD).fontSize(8).fillColor("#ffffff")
+         .text(`Presupuesto Abonado: $${fmtMonto(presAbonado)}`, L + half + 4, y + 14, { width: half - 8, lineBreak: false });
+    }
+    y += headerRowH;
 
+    // Cuerpo garantía con negritas intercaladas
     doc.font(REG).fontSize(8.8).fillColor(BLACK)
-       .text(garantiaBody, L + 4, y + 2, { width: W - 8 });
+       .text(parte1, L + 4, y + 2, { width: W - 8, continued: true })
+       .font(BOLD).text(parte2, { continued: true })
+       .text(parte3, { continued: true })
+       .font(BOLD).text(parte4, { continued: true })
+       .font(REG).text(parte5, { continued: false });
     y += bodyH + 4;
   } else {
-    const importanteTexto =
-      "Si el equipo no fuese retirado dentro de los 90 (Noventa) días del Ingreso, se considerará abandonado, facultando a EyF TechService " +
+    // Cuadro negro Estado / Presupuesto Abonado (copia empresa)
+    const presAbonadoE = Number(orden.presupuestoAbonado ?? 0);
+    const hdrHE = presAbonadoE > 0 ? 28 : 18;
+    const halfE = W / 2;
+    doc.rect(L, y, W, hdrHE).stroke(BLACK);
+    doc.rect(L, y, halfE, hdrHE).fill(LGRAY).stroke("#cccccc");
+    doc.rect(L + halfE, y, halfE, hdrHE).fill(BLACK);
+    doc.font(BOLD).fontSize(7.5).fillColor(BLACK)
+       .text("Para uso interno:", L + 4, y + 3, { width: halfE - 8, lineBreak: false });
+    const estadoLabelE = (orden.estado ?? "").replace(/_/g, " ");
+    doc.font(BOLD).fontSize(8).fillColor("#ffffff")
+       .text(`Estado: ${estadoLabelE}`, L + halfE + 4, y + 3, { width: halfE - 8, lineBreak: false });
+    if (presAbonadoE > 0) {
+      doc.font(BOLD).fontSize(8).fillColor("#ffffff")
+         .text(`Presupuesto Abonado: $${fmtMonto(presAbonadoE)}`, L + halfE + 4, y + 14, { width: halfE - 8, lineBreak: false });
+    }
+    y += hdrHE;
+
+    const imp1 = "Si el equipo no fuese retirado dentro de los ";
+    const imp2 = "90 (Noventa) días";
+    const imp3 =
+      " del Ingreso, se considerará abandonado, facultando a EyF TechService " +
       "a disponer del mismo, desistiendo EL CLIENTE, de realizar cualquier tipo de reclamo o solicitar indemnización alguna.\n" +
       "En la fecha, y en un todo de acuerdo con lo antedicho, EL CLIENTE, firma la presente Orden, dando así su total consentimiento.";
+    const importanteTexto = imp1 + imp2 + imp3;
     const impH = doc.heightOfString(importanteTexto, { width: W - 8, fontSize: 9 }) + 20;
     doc.rect(L, y, W, impH).stroke(BLACK);
     doc.font(BOLD).fontSize(7.5).fillColor(BLACK).text("MUY IMPORTANTE :", L + 4, y + 4);
-    doc.font(REG).fontSize(9).text(importanteTexto, L + 4, y + 15, { width: W - 8 });
+    doc.font(REG).fontSize(9).fillColor(BLACK)
+       .text(imp1, L + 4, y + 15, { width: W - 8, continued: true })
+       .font(BOLD).text(imp2, { continued: true })
+       .font(REG).text(imp3, { continued: false });
     y += impH;
   }
 
@@ -212,7 +246,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     }
 
     const { id } = await params;
-    const [orden, empresa] = await Promise.all([
+    const [orden, empresaRows] = await Promise.all([
       prisma.ordenTrabajo.findUnique({
         where: { id },
         include: {
@@ -221,14 +255,15 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
           presupuesto: { select: { total: true } },
         },
       }),
-      prisma.empresa.findFirst(),
+      prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Empresa" LIMIT 1`),
     ]);
+    const empresa = empresaRows[0] ?? null;
 
     if (!orden) return new NextResponse("No encontrada", { status: 404 });
 
     const buffer = await buildPdf(orden, empresa);
 
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

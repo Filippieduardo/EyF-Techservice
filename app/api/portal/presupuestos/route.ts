@@ -10,7 +10,7 @@ export async function GET() {
 
   const clienteId = (session.user as any).id as string;
 
-  const [presupuestos, clienteRows] = await Promise.all([
+  const [presupuestos, clienteRows, presRows] = await Promise.all([
     prisma.presupuesto.findMany({
       where: { clienteId },
       orderBy: { fecha: "desc" },
@@ -22,9 +22,13 @@ export async function GET() {
     prisma.$queryRawUnsafe<any[]>(
       `SELECT nombre, "condicionIva", telefono, direccion, "dniCuit" FROM "Cliente" WHERE id = $1`, clienteId
     ),
+    prisma.$queryRawUnsafe<any[]>(
+      `SELECT id, "observacionesCliente" FROM "Presupuesto" WHERE "clienteId" = $1`, clienteId
+    ),
   ]);
 
   const clienteData = clienteRows[0] ?? {};
+  const obsMap = Object.fromEntries(presRows.map((r: any) => [r.id, r.observacionesCliente ?? null]));
 
   return NextResponse.json(presupuestos.map(p => ({
     ...p,
@@ -33,6 +37,7 @@ export async function GET() {
     clienteTelefono: clienteData.telefono ?? null,
     clienteDireccion: clienteData.direccion ?? null,
     clienteDniCuit: clienteData.dniCuit ?? null,
+    observacionesCliente: obsMap[p.id] ?? null,
   })));
 }
 

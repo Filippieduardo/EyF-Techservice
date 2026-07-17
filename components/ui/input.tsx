@@ -9,7 +9,12 @@ function Input({ className, type, onChange, ...props }: React.ComponentProps<"in
   const handleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!NO_UPPERCASE.has(type ?? "") && type !== "email") {
-        e.target.value = e.target.value.toUpperCase();
+        const upper = e.target.value.toUpperCase();
+        if (upper !== e.target.value) {
+          const pos = e.target.selectionStart;
+          e.target.value = upper;
+          e.target.setSelectionRange(pos, pos);
+        }
       }
       onChange?.(e);
     },

@@ -29,6 +29,7 @@ interface EmpresaData {
   domicilio: string | null;
   telefono: string | null;
   whatsapp: string | null;
+  email: string | null;
   logoPath: string | null;
   condicionIva: string;
   dniCuit: string | null;

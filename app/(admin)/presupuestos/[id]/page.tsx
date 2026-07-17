@@ -4,9 +4,11 @@ import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ArrowLeft, Printer, Trash2, Save } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ESTADOS_PRESUPUESTO, getEstadoPresupuesto, formatDate, formatCurrency } from "@/lib/constants";
@@ -22,8 +24,9 @@ interface Presupuesto {
   descuento: number;
   total: number;
   notas: string | null;
+  observacionesCliente: string | null;
   cliente: { nombre: string; email: string | null; telefono: string | null; direccion: string | null; condicionIva?: string; dniCuit?: string | null };
-  orden: { id: string; numero: string; modelo: string | null; presupuestoAbonado: number | null; marca: { nombre: string } | null } | null;
+  orden: { id: string; numero: string; tipoEquipo: string | null; modelo: string | null; numeroSerie: string | null; descripcionProblema: string | null; presupuestoAbonado: number | null; marca: { nombre: string } | null } | null;
   items: Array<{ id: string; descripcion: string; cantidad: number; precioUnitario: number; precioTotal: number }>;
 }
 
@@ -211,7 +214,15 @@ function PrintPortal({ pres, empresa }: { pres: Presupuesto; empresa: ReturnType
             {pres.cliente.telefono && <span><strong>Tel:</strong> {pres.cliente.telefono}</span>}
             {pres.cliente.condicionIva && <span><strong>Cond. IVA:</strong> {pres.cliente.condicionIva}</span>}
             {pres.cliente.dniCuit && <span><strong>CUIT/DNI:</strong> {pres.cliente.dniCuit}</span>}
-            {pres.orden && <span><strong>Orden N°:</strong> {pres.orden.numero}{pres.orden.marca?.nombre ? " — " + pres.orden.marca.nombre : ""}{pres.orden.modelo ? " " + pres.orden.modelo : ""}</span>}
+            {pres.orden && (
+              <span>
+                <strong>Orden N°:</strong> {pres.orden.numero}
+                {pres.orden.tipoEquipo ? " · " + getTipoEquipo(pres.orden.tipoEquipo).label : ""}
+                {pres.orden.marca?.nombre ? " · " + pres.orden.marca.nombre : ""}
+                {pres.orden.modelo ? " " + pres.orden.modelo : ""}
+                {pres.orden.numeroSerie ? " (N/S: " + pres.orden.numeroSerie + ")" : ""}
+              </span>
+            )}
           </div>
         </div>
 
@@ -305,7 +316,10 @@ export default function PresupuestoDetailPage() {
   const empresa = useEmpresa();
   const [pres, setPres] = useState<Presupuesto | null>(null);
   const [estado, setEstado] = useState("");
+  const [obsCliente, setObsCliente] = useState("");
+  const [savingObs, setSavingObs] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -314,6 +328,19 @@ export default function PresupuestoDetailPage() {
     const data = await res.json();
     setPres(data);
     setEstado(data.estado);
+    setObsCliente(data.observacionesCliente ?? "");
+  }
+
+  async function handleSaveObs() {
+    setSavingObs(true);
+    const res = await fetch(`/api/presupuestos/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ observacionesCliente: obsCliente }),
+    });
+    setSavingObs(false);
+    if (res.ok) toast.success("Observaciones guardadas");
+    else toast.error("Error al guardar");
   }
 
   useEffect(() => { fetchPres(); }, [id]);
@@ -331,6 +358,17 @@ export default function PresupuestoDetailPage() {
       fetchPres();
     } else {
       toast.error("Error al actualizar");
+    }
+  }
+
+  async function handleDelete() {
+    const res = await fetch(`/api/presupuestos/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Presupuesto eliminado");
+      router.back();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      toast.error(err.error ?? "Error al eliminar");
     }
   }
 
@@ -357,14 +395,17 @@ export default function PresupuestoDetailPage() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-4 w-4 mr-1" />Imprimir
+            <div className="flex gap-2 items-center">
+              <button type="button" title="Eliminar presupuesto" className="text-red-600 hover:text-red-800 transition-colors" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="h-5 w-5" />
+              </button>
+              <Button size="sm" onClick={() => window.print()}>
+                <Printer className="h-4 w-4 mr-1" />Imprimir
+              </Button>
+            </div>
+            <Button size="sm" className="self-end" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
             </Button>
-          </div>
-          <Button size="sm" className="self-end" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-          </Button>
           </div>
         </div>
 
@@ -407,9 +448,29 @@ export default function PresupuestoDetailPage() {
                     <span>Total General:</span><span>{formatCurrency(total + iva)}</span>
                   </div>
                 </div>
+                <div className="mt-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium text-xs text-green-600">Observaciones para el cliente (visible en portal):</p>
+                    <button
+                      type="button"
+                      onClick={handleSaveObs}
+                      disabled={savingObs}
+                      className="flex items-center gap-1 text-xs text-green-700 hover:text-green-900 disabled:opacity-50"
+                    >
+                      <Save className="h-3 w-3" />{savingObs ? "Guardando..." : "Guardar"}
+                    </button>
+                  </div>
+                  <Textarea
+                    value={obsCliente}
+                    onChange={e => setObsCliente(e.target.value.toUpperCase())}
+                    rows={2}
+                    className="border-green-300 focus:border-green-500 text-sm"
+                    placeholder="Texto visible para el cliente en el portal..."
+                  />
+                </div>
                 {pres.notas && (
                   <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600">
-                    <p className="font-medium text-xs text-gray-400 mb-1">Notas:</p>
+                    <p className="font-medium text-xs text-gray-400 mb-1">Notas internas:</p>
                     {pres.notas}
                   </div>
                 )}
@@ -437,10 +498,12 @@ export default function PresupuestoDetailPage() {
             <Card>
               <CardHeader><CardTitle className="text-base">Cliente</CardTitle></CardHeader>
               <CardContent className="text-sm space-y-1">
-                <p className="font-medium">{pres.cliente.nombre}</p>
+                <p className="font-semibold">{pres.cliente.nombre}</p>
+                {pres.cliente.telefono && <p className="text-gray-600">Tel: {pres.cliente.telefono}</p>}
+                {(pres.cliente as any).whatsapp && <p className="text-gray-600">WA: {(pres.cliente as any).whatsapp}</p>}
+                {pres.cliente.dniCuit && <p className="text-gray-600">DNI/CUIT: {fmtCuit(pres.cliente.dniCuit)}</p>}
                 {pres.cliente.condicionIva && <p className="text-gray-500">Cond. IVA: {pres.cliente.condicionIva}</p>}
                 {pres.cliente.email && <p className="text-gray-500">{pres.cliente.email}</p>}
-                {pres.cliente.telefono && <p className="text-gray-500">{pres.cliente.telefono}</p>}
                 {pres.cliente.direccion && <p className="text-gray-500">{pres.cliente.direccion}</p>}
               </CardContent>
             </Card>
@@ -448,17 +511,42 @@ export default function PresupuestoDetailPage() {
             {pres.orden && (
               <Card>
                 <CardHeader><CardTitle className="text-base">Orden Vinculada</CardTitle></CardHeader>
-                <CardContent>
-                  <Link href={`/ordenes/${pres.orden.id}`} className="text-blue-600 hover:underline text-sm font-mono">
+                <CardContent className="text-sm space-y-1">
+                  <Link href={`/ordenes/${pres.orden.id}`} className="text-blue-600 hover:underline font-mono font-bold">
                     {pres.orden.numero}
                   </Link>
-                  <p className="text-xs text-gray-400">{pres.orden.marca?.nombre} {pres.orden.modelo}</p>
+                  {pres.orden.tipoEquipo && (
+                    <p className="text-gray-600">{getTipoEquipo(pres.orden.tipoEquipo).label}</p>
+                  )}
+                  {(pres.orden.marca?.nombre || pres.orden.modelo) && (
+                    <p className="font-medium">{[pres.orden.marca?.nombre, pres.orden.modelo].filter(Boolean).join(" — ")}</p>
+                  )}
+                  {pres.orden.numeroSerie && (
+                    <p className="text-gray-500 text-xs">N/S: {pres.orden.numeroSerie}</p>
+                  )}
+                  {pres.orden.descripcionProblema && (
+                    <p className="text-gray-600 text-xs italic border-t pt-1 mt-1">{pres.orden.descripcionProblema}</p>
+                  )}
                 </CardContent>
               </Card>
             )}
           </div>
         </div>
       </div>
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar presupuesto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Seguro desea eliminar el presupuesto <strong>{pres.numero}</strong>? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

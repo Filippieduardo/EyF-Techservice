@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const empresa = await prisma.empresa.findFirst();
-  return NextResponse.json(empresa ?? null);
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Empresa" LIMIT 1`);
+  return NextResponse.json(rows[0] ?? null);
 }
 
 export async function PUT(req: NextRequest) {
@@ -14,12 +14,12 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { nombre, domicilio, condicionIva, dniCuit, telefono, whatsapp, email } = body;
+  const { nombre, domicilio, condicionIva, dniCuit, telefono, telServTecnico, whatsapp, email } = body;
 
   const existing = await prisma.empresa.findFirst();
   const empresa = existing
-    ? await prisma.empresa.update({ where: { id: existing.id }, data: { nombre, domicilio, condicionIva, dniCuit, telefono, whatsapp, email } })
-    : await prisma.empresa.create({ data: { nombre: nombre ?? "Mi Empresa", domicilio, condicionIva: condicionIva ?? "INSCRIPTO", dniCuit, telefono, whatsapp, email } });
+    ? await prisma.$queryRawUnsafe<any[]>(`UPDATE "Empresa" SET nombre=$1, domicilio=$2, "condicionIva"=$3, "dniCuit"=$4, telefono=$5, "telServTecnico"=$6, whatsapp=$7, email=$8, "updatedAt"=NOW() WHERE id=$9 RETURNING *`, nombre, domicilio??null, condicionIva??'INSCRIPTO', dniCuit??null, telefono??null, telServTecnico??null, whatsapp??null, email??null, existing.id).then(r=>r[0])
+    : await prisma.$queryRawUnsafe<any[]>(`INSERT INTO "Empresa" (id, nombre, domicilio, "condicionIva", "dniCuit", telefono, "telServTecnico", whatsapp, email, "createdAt", "updatedAt") VALUES (gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW()) RETURNING *`, nombre??'Mi Empresa', domicilio??null, condicionIva??'INSCRIPTO', dniCuit??null, telefono??null, telServTecnico??null, whatsapp??null, email??null).then(r=>r[0]);
 
   return NextResponse.json(empresa);
 }
