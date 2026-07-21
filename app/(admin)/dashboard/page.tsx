@@ -18,7 +18,7 @@ export default async function DashboardPage() {
 
   const isTecnico = role === "TECNICO";
 
-  const tecnicoFilter = isTecnico ? { tecnicoId: userId, ubicacionActual: "TALLER" as const } : {};
+  const tecnicoFilter = isTecnico ? { tecnicoId: userId } : {};
 
   const [
     totalOrdenes,
