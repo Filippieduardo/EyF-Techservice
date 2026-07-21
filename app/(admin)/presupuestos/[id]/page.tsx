@@ -448,7 +448,7 @@ export default function PresupuestoDetailPage() {
             ) : (
               <>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
+                  <Button size="sm" onClick={() => setConfirmDelete(true)}>
                     <Trash2 className="h-4 w-4 mr-1" />Eliminar
                   </Button>
                   <Button size="sm" onClick={() => window.print()}>
