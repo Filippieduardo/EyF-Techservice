@@ -46,12 +46,12 @@ export default async function DashboardPage() {
     prisma.ordenTrabajo.findMany({
       where: { ...tecnicoFilter, estado: "ENTREGADO" },
       orderBy: { fechaCierre: "asc" },
-      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { name: true } } },
+      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { nombre: true } } },
     }),
     prisma.ordenTrabajo.findMany({
       where: { ...tecnicoFilter, estado: { not: "ENTREGADO" } },
       orderBy: { fechaIngreso: "asc" },
-      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { name: true } } },
+      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { nombre: true } } },
     }),
     prisma.ordenTrabajo.groupBy({
       by: ["estado"],
@@ -310,7 +310,7 @@ function OrdenTable({ ordenes, estadoColors, estadoLabels }: {
               {orden.marca?.nombre ?? ""} {orden.modelo ?? ""}
             </td>
             <td className="px-3 py-1.5 text-muted-foreground hidden lg:table-cell">
-              {orden.tecnico?.name ?? <span className="text-gray-300">—</span>}
+              {orden.tecnico?.nombre ?? <span className="text-gray-300">—</span>}
             </td>
             <td className="px-3 py-1.5">
               <span className={`px-2 py-1 rounded font-bold text-sm ${
