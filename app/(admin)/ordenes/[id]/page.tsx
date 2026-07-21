@@ -127,7 +127,7 @@ export default function OrdenDetailPage() {
   useEffect(() => {
     fetchOrden();
     fetchRepuestosUsados();
-    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => u.role === "TECNICO" && u.activo)));
+    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => (u.role === "TECNICO" || u.role === "ADMIN") && u.activo)));
   }, [id]);
 
   useEffect(() => {
