@@ -3,12 +3,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Printer, Trash2, Save } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ESTADOS_PRESUPUESTO, getEstadoPresupuesto, getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
@@ -310,16 +312,26 @@ function PrintPortal({ pres, empresa }: { pres: Presupuesto; empresa: ReturnType
 // ──────────────────────────────────────────────
 // Página principal
 // ──────────────────────────────────────────────
+interface EditItem { descripcion: string; cantidad: number; precioUnitario: number; _editingPrecio?: boolean; }
+
 export default function PresupuestoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const empresa = useEmpresa();
   const [pres, setPres] = useState<Presupuesto | null>(null);
   const [estado, setEstado] = useState("");
-  const [obsCliente, setObsCliente] = useState("");
-  const [savingObs, setSavingObs] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Modo edición
+  const [isEditing, setIsEditing] = useState(false);
+  const [editItems, setEditItems] = useState<EditItem[]>([]);
+  const [editValidez, setEditValidez] = useState(5);
+  const [editDescuento, setEditDescuento] = useState(0);
+  const [editDescuentoEditing, setEditDescuentoEditing] = useState(false);
+  const [editNotas, setEditNotas] = useState("");
+  const [editObsCliente, setEditObsCliente] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -328,22 +340,51 @@ export default function PresupuestoDetailPage() {
     const data = await res.json();
     setPres(data);
     setEstado(data.estado);
-    setObsCliente(data.observacionesCliente ?? "");
+  }
+  useEffect(() => { fetchPres(); }, [id]);
+
+  function startEditing(p: Presupuesto) {
+    setEditItems(p.items.map(i => ({ descripcion: i.descripcion, cantidad: i.cantidad, precioUnitario: Number(i.precioUnitario) })));
+    setEditValidez(p.validezDias);
+    setEditDescuento(Math.max(Number(p.descuento), Number(p.orden?.presupuestoAbonado ?? 0)));
+    setEditNotas(p.notas ?? "");
+    setEditObsCliente((p as any).observacionesCliente ?? "");
+    setIsEditing(true);
   }
 
-  async function handleSaveObs() {
-    setSavingObs(true);
+  function setEditItem(idx: number, field: keyof EditItem, value: string | number | boolean) {
+    setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  }
+
+  async function handleSaveEdit() {
+    const itemsValidos = editItems.filter(i => i.descripcion.trim());
+    if (!itemsValidos.length) { toast.error("Agregar al menos un ítem"); return; }
+    setSaving(true);
+    const subtotalCalc = itemsValidos.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
+    const totalCalc = subtotalCalc - editDescuento;
     const res = await fetch(`/api/presupuestos/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ observacionesCliente: obsCliente }),
+      body: JSON.stringify({
+        fullUpdate: true,
+        validezDias: editValidez,
+        descuento: editDescuento,
+        notas: editNotas,
+        observacionesCliente: editObsCliente,
+        subtotal: subtotalCalc,
+        total: totalCalc,
+        items: itemsValidos,
+      }),
     });
-    setSavingObs(false);
-    if (res.ok) toast.success("Observaciones guardadas");
-    else toast.error("Error al guardar");
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Presupuesto actualizado");
+      setIsEditing(false);
+      fetchPres();
+    } else {
+      toast.error("Error al guardar");
+    }
   }
-
-  useEffect(() => { fetchPres(); }, [id]);
 
   async function handleEstado(nuevoEstado: string | null) {
     if (!nuevoEstado) return;
@@ -352,30 +393,14 @@ export default function PresupuestoDetailPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: nuevoEstado }),
     });
-    if (res.ok) {
-      toast.success("Estado actualizado");
-      setEstado(nuevoEstado);
-      fetchPres();
-    } else {
-      toast.error("Error al actualizar");
-    }
-  }
-
-  async function handleDeleteItem(itemId: string) {
-    const res = await fetch(`/api/presupuestos/${id}/items/${itemId}`, { method: "DELETE" });
-    if (res.ok) { toast.success("Ítem eliminado"); fetchPres(); }
-    else toast.error("Error al eliminar ítem");
+    if (res.ok) { toast.success("Estado actualizado"); setEstado(nuevoEstado); fetchPres(); }
+    else toast.error("Error al actualizar");
   }
 
   async function handleDelete() {
     const res = await fetch(`/api/presupuestos/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("Presupuesto eliminado");
-      router.back();
-    } else {
-      const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? "Error al eliminar");
-    }
+    if (res.ok) { toast.success("Presupuesto eliminado"); router.back(); }
+    else { const err = await res.json().catch(() => ({})); toast.error(err.error ?? "Error al eliminar"); }
   }
 
   if (!pres) return <div className="p-6 text-gray-400">Cargando...</div>;
@@ -385,12 +410,19 @@ export default function PresupuestoDetailPage() {
   const total = Number(pres.subtotal) - descuentoEfectivo;
   const iva = pres.cliente.condicionIva === "INSCRIPTO" ? total * 0.21 : 0;
 
+  // Totales en modo edición
+  const editSubtotal = editItems.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
+  const editTotal = editSubtotal - editDescuento;
+  const editIva = pres.cliente.condicionIva === "INSCRIPTO" ? editTotal * 0.21 : 0;
+
   return (
     <>
       {mounted && pres && <PrintPortal pres={pres} empresa={empresa} />}
 
       <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl">
-        <div className="flex items-center gap-4 flex-wrap">
+
+        {/* ── CABECERA ── */}
+        <div className="flex items-start gap-4 flex-wrap">
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold font-mono">{pres.numero}</h1>
@@ -401,153 +433,221 @@ export default function PresupuestoDetailPage() {
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2 items-center">
-              <button type="button" title="Eliminar presupuesto" className="text-red-600 hover:text-red-800 transition-colors" onClick={() => setConfirmDelete(true)}>
-                <Trash2 className="h-5 w-5" />
-              </button>
-              <Button size="sm" onClick={() => window.print()}>
-                <Printer className="h-4 w-4 mr-1" />Imprimir
-              </Button>
-            </div>
-            <Button size="sm" className="self-end" onClick={() => router.back()}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-            </Button>
+            {isEditing ? (
+              <>
+                <div className="flex gap-2">
+                  <Button size="sm" disabled={saving} onClick={handleSaveEdit}>
+                    {saving ? "Guardando..." : "Guardar"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                </div>
+                <Button size="sm" onClick={() => router.back()}>
+                  <ArrowLeft className="h-4 w-4 mr-1" />Volver
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="destructive" onClick={() => setConfirmDelete(true)}>
+                    <Trash2 className="h-4 w-4 mr-1" />Eliminar
+                  </Button>
+                  <Button size="sm" onClick={() => window.print()}>
+                    <Printer className="h-4 w-4 mr-1" />Imprimir
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => startEditing(pres)}>Editar</Button>
+                  <Button size="sm" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4 mr-1" />Volver
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Ítems</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-0">
-                  <div className="grid grid-cols-13 gap-2 text-xs font-medium text-gray-500 border-b pb-2 mb-2" style={{gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr auto auto auto auto auto auto auto"}}>
-                    <div className="col-span-6">Descripción</div>
-                    <div className="col-span-2 text-center">Cant.</div>
-                    <div className="col-span-2 text-right">Precio Unit.</div>
-                    <div className="col-span-2 text-right">Total</div>
-                    <div className="col-span-1"></div>
-                  </div>
-                  {pres.items.map((item) => (
-                    <div key={item.id} className="grid gap-2 py-2 border-b last:border-0 text-sm items-center" style={{gridTemplateColumns:"6fr 2fr 2fr 2fr auto"}}>
-                      <div>{item.descripcion}</div>
-                      <div className="text-center">{item.cantidad}</div>
-                      <div className="text-right">{formatCurrency(item.precioUnitario)}</div>
-                      <div className="text-right font-medium">{formatCurrency(item.precioTotal)}</div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="text-red-500 hover:text-red-700 transition-colors pl-2"
-                        title="Eliminar ítem"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+        {/* ── PANEL CLIENTE (siempre visible) ── */}
+        <dl className="text-sm space-y-1 bg-blue-50 rounded p-3 border border-blue-200">
+          <div className="flex gap-2">
+            <dt className="text-gray-500 w-28 flex-shrink-0 font-medium">Cliente:</dt>
+            <dd className="font-semibold">{pres.cliente.nombre}</dd>
+          </div>
+          {pres.cliente.telefono && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Teléfono:</dt><dd>{pres.cliente.telefono}</dd></div>}
+          {(pres.cliente as any).whatsapp && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">WhatsApp:</dt><dd>{(pres.cliente as any).whatsapp}</dd></div>}
+          {pres.cliente.dniCuit && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">DNI/CUIT:</dt><dd>{fmtCuit(pres.cliente.dniCuit)}</dd></div>}
+          {pres.cliente.condicionIva && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Cond. IVA:</dt><dd>{pres.cliente.condicionIva}</dd></div>}
+          {pres.cliente.email && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Email:</dt><dd>{pres.cliente.email}</dd></div>}
+          {pres.cliente.direccion && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Dirección:</dt><dd>{pres.cliente.direccion}</dd></div>}
+        </dl>
+
+        {/* ── PANEL EQUIPO (si hay orden vinculada) ── */}
+        {pres.orden && (
+          <dl className="text-sm space-y-1 bg-amber-50 rounded p-3 border border-amber-200">
+            <p className="font-medium text-xs text-amber-700 mb-2">
+              Equipo de la orden:{" "}
+              <Link href={`/ordenes/${pres.orden.id}`} className="font-mono font-bold text-blue-600 hover:underline">{pres.orden.numero}</Link>
+            </p>
+            {pres.orden.tipoEquipo && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Tipo:</dt><dd className="font-medium">{getTipoEquipo(pres.orden.tipoEquipo).label}</dd></div>}
+            {(pres.orden.marca?.nombre || pres.orden.modelo) && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Equipo:</dt><dd className="font-semibold">{[pres.orden.marca?.nombre, pres.orden.modelo].filter(Boolean).join(" — ")}</dd></div>}
+            {pres.orden.numeroSerie && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">N/S:</dt><dd>{pres.orden.numeroSerie}</dd></div>}
+            {pres.orden.descripcionProblema && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0 mt-0.5">Problema:</dt><dd className="italic">{pres.orden.descripcionProblema}</dd></div>}
+          </dl>
+        )}
+
+        {/* ── DATOS GENERALES (validez) en modo edición ── */}
+        {isEditing && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Datos Generales</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1 w-40">
+                <Label>Validez (días)</Label>
+                <Input type="number" min={1} value={editValidez} onChange={e => setEditValidez(Number(e.target.value))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-green-700">Observaciones para el Cliente <span className="text-xs font-normal text-gray-400">(visible en portal)</span></Label>
+                <Textarea value={editObsCliente} onChange={e => setEditObsCliente(e.target.value.toUpperCase())} rows={3} className="border-green-300 focus:border-green-500" placeholder="Texto visible para el cliente en el portal..." />
+              </div>
+              <div className="space-y-1">
+                <Label>Notas internas</Label>
+                <Textarea value={editNotas} onChange={e => setEditNotas(e.target.value.toUpperCase())} rows={2} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ── ÍTEMS ── */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Ítems</CardTitle>
+              {isEditing && (
+                <Button type="button" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setEditItems(prev => [...prev, { descripcion: "", cantidad: 1, precioUnitario: 0 }])}>
+                  <Plus className="h-3 w-3 mr-1" />Agregar ítem
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isEditing ? (
+              <div className="space-y-2">
+                <div className="hidden sm:flex gap-2 text-xs font-medium text-gray-500 px-1" style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto" }}>
+                  <span>Descripción</span>
+                  <span className="w-16 text-center">Cant.</span>
+                  <span className="w-32 text-right">Importe Unit.</span>
+                  <span className="w-8"></span>
+                </div>
+                {editItems.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 items-center">
+                    <div className="flex-1">
+                      <Input value={item.descripcion} onChange={e => setEditItem(idx, "descripcion", e.target.value.toUpperCase())} placeholder="Descripción..." className={!item.descripcion.trim() ? "border-red-300" : ""} />
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 space-y-1 text-sm">
-                  <div className="flex justify-between text-gray-500">
-                    <span>Subtotal:</span><span>{formatCurrency(pres.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-500">
-                    <span>Descuento:</span><span>- {formatCurrency(descuentoEfectivo)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-base">
-                    <span>Total:</span><span>{formatCurrency(total)}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600 text-sm">
-                    <span>IVA 21%:</span><span>{formatCurrency(iva)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total General:</span><span>{formatCurrency(total + iva)}</span>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-xs text-green-600">Observaciones para el cliente (visible en portal):</p>
-                    <button
-                      type="button"
-                      onClick={handleSaveObs}
-                      disabled={savingObs}
-                      className="flex items-center gap-1 text-xs text-green-700 hover:text-green-900 disabled:opacity-50"
-                    >
-                      <Save className="h-3 w-3" />{savingObs ? "Guardando..." : "Guardar"}
+                    <div className="w-16">
+                      <Input type="number" min={1} value={item.cantidad} onChange={e => setEditItem(idx, "cantidad", Number(e.target.value))} className="text-center" />
+                    </div>
+                    <div className="w-32">
+                      <Input
+                        className="text-right"
+                        placeholder="$ 0,00"
+                        value={item._editingPrecio ? item.precioUnitario : formatCurrency(item.precioUnitario)}
+                        onFocus={() => setEditItem(idx, "_editingPrecio", true)}
+                        onBlur={() => setEditItem(idx, "_editingPrecio", false)}
+                        onChange={e => setEditItem(idx, "precioUnitario", Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
+                      />
+                    </div>
+                    <button type="button" onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 w-8 flex justify-center" title="Eliminar ítem">
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                  <Textarea
-                    value={obsCliente}
-                    onChange={e => setObsCliente(e.target.value.toUpperCase())}
-                    rows={2}
-                    className="border-green-300 focus:border-green-500 text-sm"
-                    placeholder="Texto visible para el cliente en el portal..."
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-0">
+                <div className="hidden sm:grid gap-2 text-xs font-medium text-gray-500 border-b pb-2 mb-2" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
+                  <span>Descripción</span>
+                  <span className="w-12 text-center">Cant.</span>
+                  <span className="w-28 text-right">Precio Unit.</span>
+                  <span className="w-28 text-right">Total</span>
+                </div>
+                {pres.items.map((item) => (
+                  <div key={item.id} className="grid gap-2 py-2 border-b last:border-0 text-sm" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
+                    <div>{item.descripcion}</div>
+                    <div className="w-12 text-center">{item.cantidad}</div>
+                    <div className="w-28 text-right">{formatCurrency(item.precioUnitario)}</div>
+                    <div className="w-28 text-right font-medium">{formatCurrency(item.precioTotal)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Totales */}
+            <div className="mt-4 space-y-1 text-sm border-t pt-3">
+              <div className="flex justify-between text-gray-500">
+                <span>Subtotal:</span><span>{formatCurrency(isEditing ? editSubtotal : pres.subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-gray-500">
+                <span>Descuento:</span>
+                {isEditing ? (
+                  <Input
+                    className="w-36 text-right h-7"
+                    value={editDescuentoEditing ? editDescuento : formatCurrency(editDescuento)}
+                    onFocus={() => setEditDescuentoEditing(true)}
+                    onBlur={() => setEditDescuentoEditing(false)}
+                    onChange={e => setEditDescuento(Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
                   />
+                ) : (
+                  <span>- {formatCurrency(descuentoEfectivo)}</span>
+                )}
+              </div>
+              <Separator />
+              <div className="flex justify-between font-bold text-base">
+                <span>Total:</span><span>{formatCurrency(isEditing ? editTotal : total)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600 text-sm">
+                <span>IVA 21%:</span><span>{formatCurrency(isEditing ? editIva : iva)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <span>Total General:</span><span>{formatCurrency(isEditing ? editTotal + editIva : total + iva)}</span>
+              </div>
+            </div>
+
+            {/* Observaciones / Notas — modo vista */}
+            {!isEditing && (
+              <>
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-gray-700">
+                  <p className="font-medium text-xs text-green-600 mb-1">Observaciones para el cliente (visible en portal):</p>
+                  {(pres as any).observacionesCliente || <span className="text-gray-400 italic">Sin observaciones</span>}
                 </div>
                 {pres.notas && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-600">
+                  <div className="mt-2 p-3 bg-gray-50 rounded text-sm text-gray-600">
                     <p className="font-medium text-xs text-gray-400 mb-1">Notas internas:</p>
                     {pres.notas}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Estado</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <Select value={estado} onValueChange={handleEstado}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ESTADOS_PRESUPUESTO.map(e => (
-                      <SelectItem key={e.value} value={e.value}>
-                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${e.color}`}>{e.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle className="text-base">Cliente</CardTitle></CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <p className="font-semibold">{pres.cliente.nombre}</p>
-                {pres.cliente.telefono && <p className="text-gray-600">Tel: {pres.cliente.telefono}</p>}
-                {(pres.cliente as any).whatsapp && <p className="text-gray-600">WA: {(pres.cliente as any).whatsapp}</p>}
-                {pres.cliente.dniCuit && <p className="text-gray-600">DNI/CUIT: {fmtCuit(pres.cliente.dniCuit)}</p>}
-                {pres.cliente.condicionIva && <p className="text-gray-500">Cond. IVA: {pres.cliente.condicionIva}</p>}
-                {pres.cliente.email && <p className="text-gray-500">{pres.cliente.email}</p>}
-                {pres.cliente.direccion && <p className="text-gray-500">{pres.cliente.direccion}</p>}
-              </CardContent>
-            </Card>
-
-            {pres.orden && (
-              <Card>
-                <CardHeader><CardTitle className="text-base">Orden Vinculada</CardTitle></CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  <Link href={`/ordenes/${pres.orden.id}`} className="text-blue-600 hover:underline font-mono font-bold">
-                    {pres.orden.numero}
-                  </Link>
-                  {pres.orden.tipoEquipo && (
-                    <p className="text-gray-600">{getTipoEquipo(pres.orden.tipoEquipo).label}</p>
-                  )}
-                  {(pres.orden.marca?.nombre || pres.orden.modelo) && (
-                    <p className="font-medium">{[pres.orden.marca?.nombre, pres.orden.modelo].filter(Boolean).join(" — ")}</p>
-                  )}
-                  {pres.orden.numeroSerie && (
-                    <p className="text-gray-500 text-xs">N/S: {pres.orden.numeroSerie}</p>
-                  )}
-                  {pres.orden.descripcionProblema && (
-                    <p className="text-gray-600 text-xs italic border-t pt-1 mt-1">{pres.orden.descripcionProblema}</p>
-                  )}
-                </CardContent>
-              </Card>
+              </>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* ── ESTADO (siempre visible) ── */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Estado del presupuesto</CardTitle></CardHeader>
+          <CardContent>
+            <Select value={estado} onValueChange={handleEstado}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ESTADOS_PRESUPUESTO.map(e => (
+                  <SelectItem key={e.value} value={e.value}>
+                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${e.color}`}>{e.label}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
       </div>
+
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>

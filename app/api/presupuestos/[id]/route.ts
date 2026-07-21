@@ -39,15 +39,41 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const body = await req.json();
 
+  // Actualización completa (modo edición)
+  if (body.fullUpdate) {
+    const { validezDias, descuento, notas, observacionesCliente, subtotal, total, items } = body;
+    await prisma.presupuesto.update({
+      where: { id },
+      data: { validezDias, descuento, subtotal, total, notas: notas || null },
+    });
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Presupuesto" SET "observacionesCliente" = $1 WHERE id = $2`,
+      observacionesCliente || null, id
+    );
+    await prisma.presupuestoItem.deleteMany({ where: { presupuestoId: id } });
+    await prisma.presupuestoItem.createMany({
+      data: (items as any[]).map((item: any) => ({
+        presupuestoId: id,
+        descripcion: item.descripcion,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        precioTotal: item.cantidad * item.precioUnitario,
+        repuestoId: item.repuestoId || null,
+      })),
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Solo observacionesCliente
   if (body.observacionesCliente !== undefined) {
     await prisma.$executeRawUnsafe(
       `UPDATE "Presupuesto" SET "observacionesCliente" = $1 WHERE id = $2`,
-      body.observacionesCliente || null,
-      id
+      body.observacionesCliente || null, id
     );
     return NextResponse.json({ ok: true });
   }
 
+  // Solo estado
   const presupuesto = await prisma.presupuesto.update({
     where: { id },
     data: { estado: body.estado as any },
