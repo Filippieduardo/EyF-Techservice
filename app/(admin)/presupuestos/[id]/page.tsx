@@ -15,6 +15,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ESTADOS_PRESUPUESTO, getEstadoPresupuesto, getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
 import { useEmpresa } from "@/lib/empresa-context";
+import { useSession } from "next-auth/react";
 
 interface Presupuesto {
   id: string;
@@ -318,6 +319,8 @@ export default function PresupuestoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const empresa = useEmpresa();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [pres, setPres] = useState<Presupuesto | null>(null);
   const [estado, setEstado] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -633,7 +636,7 @@ export default function PresupuestoDetailPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Estado del presupuesto</CardTitle></CardHeader>
           <CardContent>
-            <Select value={estado} onValueChange={handleEstado}>
+            <Select value={estado} onValueChange={handleEstado} disabled={!isAdmin}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {ESTADOS_PRESUPUESTO.map(e => (
