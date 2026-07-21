@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ function formatCuit(raw: string | null | undefined): string {
   const d = raw.replace(/[-\s]/g, "");
   return d.length === 11 ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d[10]}` : raw;
 }
+
 interface Item { descripcion: string; cantidad: number; precioUnitario: number; _editingPrecio?: boolean; }
 
 export default function NuevoPresupuestoPage() {
@@ -47,6 +48,7 @@ export default function NuevoPresupuestoPage() {
   const [descuentoEditing, setDescuentoEditing] = useState(false);
   const [notas, setNotas] = useState("");
   const [observacionesCliente, setObservacionesCliente] = useState("");
+  const obsClienteOriginalRef = useRef("");
   const [items, setItems] = useState<Item[]>([
     { descripcion: "", cantidad: 1, precioUnitario: 0 },
   ]);
@@ -59,9 +61,7 @@ export default function NuevoPresupuestoPage() {
   }
 
   useEffect(() => {
-    fetch("/api/clientes").then(r => r.ok ? r.json() : []).then((cs: Cliente[]) => {
-      setClientes(cs);
-    });
+    fetch("/api/clientes").then(r => r.ok ? r.json() : []).then((cs: Cliente[]) => setClientes(cs));
     if (preClienteId) {
       fetch(`/api/clientes/${preClienteId}`).then(r => r.ok ? r.json() : null).then((c: any) => {
         if (c) setSelectedCliente(c);
@@ -75,7 +75,9 @@ export default function NuevoPresupuestoPage() {
             setOrdenNumero(data.numero ?? preOrdenId);
             const abonado = Number(data.presupuestoAbonado ?? 0);
             if (abonado > 0) setDescuento(abonado);
-            if (data.observacionesCliente) setObservacionesCliente(data.observacionesCliente);
+            const obs = data.observacionesCliente ?? "";
+            setObservacionesCliente(obs);
+            obsClienteOriginalRef.current = obs;
             setOrdenEquipo({
               tipoEquipo: data.tipoEquipo ?? undefined,
               marca: data.marca?.nombre ?? undefined,
@@ -89,7 +91,11 @@ export default function NuevoPresupuestoPage() {
   }, []);
 
   function setItem(idx: number, field: keyof Item, value: string | number | boolean) {
-    setItems(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+  }
+
+  function removeItem(idx: number) {
+    setItems(prev => prev.filter((_, i) => i !== idx));
   }
 
   const subtotal = items.reduce((acc, i) => acc + i.cantidad * i.precioUnitario, 0);
@@ -98,16 +104,29 @@ export default function NuevoPresupuestoPage() {
   const iva = clienteSeleccionado?.condicionIva === "INSCRIPTO" ? total * 0.21 : 0;
   const totalGeneral = total + iva;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const tieneItems = items.some(i => i.descripcion.trim());
+  const obsModificada = observacionesCliente !== obsClienteOriginalRef.current;
+  const canSave = !loading && tieneItems;
+
+  async function handleGuardar() {
     if (!clienteId) { toast.error("Seleccionar cliente"); return; }
-    const itemsConDescripcionVacia = items.filter(i => !i.descripcion.trim());
-    if (itemsConDescripcionVacia.length > 0) { toast.error("Todos los ítems deben tener descripción"); return; }
+    if (!tieneItems) { toast.error("Agregar al menos un ítem"); return; }
+    const itemsInvalidos = items.filter(i => i.descripcion.trim() && i.precioUnitario <= 0);
+    if (itemsInvalidos.length > 0) { toast.error("Todos los ítems deben tener precio"); return; }
     setLoading(true);
+    const itemsAGuardar = items.filter(i => i.descripcion.trim());
     const res = await fetch("/api/presupuestos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clienteId, ordenId: ordenId || undefined, validezDias, descuento, notas, observacionesCliente: observacionesCliente || undefined, items }),
+      body: JSON.stringify({
+        clienteId,
+        ordenId: ordenId || undefined,
+        validezDias,
+        descuento,
+        notas,
+        observacionesCliente: observacionesCliente || undefined,
+        items: itemsAGuardar,
+      }),
     });
     setLoading(false);
     if (res.ok) {
@@ -119,14 +138,34 @@ export default function NuevoPresupuestoPage() {
     }
   }
 
+  // Bloquear Enter en inputs para que no dispare submit
+  function handleFormKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+      e.preventDefault();
+      (e.target as HTMLElement).blur?.();
+    }
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-3xl space-y-4 md:space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <h1 className="text-2xl font-bold">Nuevo Presupuesto</h1>
-        <Button size="sm" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-1" />Volver</Button>
+        <div className="flex flex-col gap-2 items-end">
+          <Button
+            size="sm"
+            disabled={!canSave}
+            onClick={handleGuardar}
+            title={!tieneItems ? "Agregue al menos un ítem para guardar" : ""}
+          >
+            Guardar
+          </Button>
+          <Button size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-1" />Volver
+          </Button>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onKeyDown={handleFormKeyDown} className="space-y-4">
         <Card>
           <CardHeader><CardTitle className="text-base">Datos Generales</CardTitle></CardHeader>
           <CardContent className="space-y-3">
@@ -177,7 +216,6 @@ export default function NuevoPresupuestoPage() {
                 <Input
                   type="number" min={1} value={validezDias}
                   onChange={e => setValidezDias(Number(e.target.value))}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                 />
               </div>
               {ordenId && (
@@ -217,7 +255,10 @@ export default function NuevoPresupuestoPage() {
               </dl>
             )}
             <div className="space-y-1">
-              <Label className="text-green-700">Observaciones para el Cliente <span className="text-xs font-normal text-gray-400">(visible en portal — se guarda con el presupuesto)</span></Label>
+              <Label className="text-green-700">
+                Observaciones para el Cliente
+                <span className="text-xs font-normal text-gray-400 ml-1">(visible en portal)</span>
+              </Label>
               <Textarea
                 value={observacionesCliente}
                 onChange={e => setObservacionesCliente(e.target.value.toUpperCase())}
@@ -237,21 +278,26 @@ export default function NuevoPresupuestoPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Ítems</CardTitle>
-              <Button type="button" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setItems([...items, { descripcion: "", cantidad: 1, precioUnitario: 0 }])}>
+              <Button
+                type="button"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => setItems(prev => [...prev, { descripcion: "", cantidad: 1, precioUnitario: 0 }])}
+              >
                 <Plus className="h-3 w-3 mr-1" />Agregar ítem
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 px-1">
-              <div className="col-span-6">Descripción</div>
-              <div className="col-span-2 text-center">Cant.</div>
-              <div className="col-span-3 text-right">Importe Unit.</div>
-              <div className="col-span-1"></div>
+            <div className="hidden sm:grid gap-2 text-xs font-medium text-gray-500 px-1" style={{ gridTemplateColumns: "1fr auto auto auto" }}>
+              <div>Descripción</div>
+              <div className="w-16 text-center">Cant.</div>
+              <div className="w-32 text-right">Importe Unit.</div>
+              <div className="w-8"></div>
             </div>
             {items.map((item, idx) => (
-              <div key={idx} className="flex flex-col sm:grid sm:grid-cols-12 gap-2 items-start sm:items-center border sm:border-0 rounded p-2 sm:p-0">
-                <div className="w-full sm:col-span-6">
+              <div key={idx} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center border sm:border-0 rounded p-2 sm:p-0">
+                <div className="flex-1 w-full">
                   <Input
                     value={item.descripcion}
                     onChange={e => setItem(idx, "descripcion", e.target.value.toUpperCase())}
@@ -259,27 +305,34 @@ export default function NuevoPresupuestoPage() {
                     className={!item.descripcion.trim() ? "border-red-300" : ""}
                   />
                 </div>
-                <div className="flex gap-2 w-full sm:contents">
-                  <div className="flex-1 sm:col-span-2">
-                    <Input type="number" min={1} value={item.cantidad} onChange={e => setItem(idx, "cantidad", Number(e.target.value))} className="text-center" placeholder="Cant." />
-                  </div>
-                  <div className="flex-1 sm:col-span-3">
-                    <Input
-                      className="text-right"
-                      placeholder="$ 0,00"
-                      value={item._editingPrecio ? item.precioUnitario : formatCurrency(item.precioUnitario)}
-                      onFocus={() => setItem(idx, "_editingPrecio", true)}
-                      onBlur={() => setItem(idx, "_editingPrecio", false)}
-                      onChange={e => setItem(idx, "precioUnitario", Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
-                    />
-                  </div>
-                  <div className="sm:col-span-1 flex justify-center items-center">
-                    {items.length > 1 && (
-                      <Button type="button" size="sm" variant="ghost" onClick={() => setItems(items.filter((_, i) => i !== idx))}>
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
-                    )}
-                  </div>
+                <div className="w-16">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={item.cantidad}
+                    onChange={e => setItem(idx, "cantidad", Number(e.target.value))}
+                    className="text-center"
+                  />
+                </div>
+                <div className="w-32">
+                  <Input
+                    className="text-right"
+                    placeholder="$ 0,00"
+                    value={item._editingPrecio ? item.precioUnitario : formatCurrency(item.precioUnitario)}
+                    onFocus={() => setItem(idx, "_editingPrecio", true)}
+                    onBlur={() => setItem(idx, "_editingPrecio", false)}
+                    onChange={e => setItem(idx, "precioUnitario", Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
+                  />
+                </div>
+                <div className="w-8 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => removeItem(idx)}
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                    title="Eliminar ítem"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -300,7 +353,6 @@ export default function NuevoPresupuestoPage() {
                 onFocus={() => setDescuentoEditing(true)}
                 onBlur={() => setDescuentoEditing(false)}
                 onChange={e => setDescuento(Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
-                onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
               />
             </div>
             <Separator />
@@ -318,10 +370,6 @@ export default function NuevoPresupuestoPage() {
             </div>
           </CardContent>
         </Card>
-
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Creando..." : "Crear Presupuesto"}
-        </Button>
       </form>
     </div>
   );
