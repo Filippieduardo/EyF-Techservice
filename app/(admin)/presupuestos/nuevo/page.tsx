@@ -44,6 +44,7 @@ export default function NuevoPresupuestoPage() {
   const [ordenEquipo, setOrdenEquipo] = useState<{ tipoEquipo?: string; marca?: string; modelo?: string; numeroSerie?: string; descripcionProblema?: string } | null>(null);
   const [validezDias, setValidezDias] = useState(5);
   const [descuento, setDescuento] = useState(0);
+  const [descuentoEditing, setDescuentoEditing] = useState(false);
   const [notas, setNotas] = useState("");
   const [observacionesCliente, setObservacionesCliente] = useState("");
   const [items, setItems] = useState<Item[]>([
@@ -216,12 +217,12 @@ export default function NuevoPresupuestoPage() {
               </dl>
             )}
             <div className="space-y-1">
-              <Label>Observaciones para el Cliente</Label>
+              <Label className="text-green-700">Observaciones para el Cliente <span className="text-xs font-normal text-gray-400">(visible en portal — se guarda con el presupuesto)</span></Label>
               <Textarea
                 value={observacionesCliente}
                 onChange={e => setObservacionesCliente(e.target.value.toUpperCase())}
-                rows={2}
-                placeholder="Visible para el cliente en el portal..."
+                rows={3}
+                placeholder="Texto visible para el cliente en el portal..."
                 className="border-green-300 focus:border-green-500"
               />
             </div>
@@ -293,7 +294,14 @@ export default function NuevoPresupuestoPage() {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-500">Descuento:</span>
-              <Input type="number" min={0} step="0.01" value={descuento} onChange={e => setDescuento(Number(e.target.value))} className="w-36 text-right h-7" />
+              <Input
+                className="w-36 text-right h-7"
+                value={descuentoEditing ? descuento : formatCurrency(descuento)}
+                onFocus={() => setDescuentoEditing(true)}
+                onBlur={() => setDescuentoEditing(false)}
+                onChange={e => setDescuento(Number(e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".")) || 0)}
+                onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              />
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-base">

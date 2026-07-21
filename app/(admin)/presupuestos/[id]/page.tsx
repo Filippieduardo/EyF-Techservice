@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowLeft, Printer, Trash2, Save } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ESTADOS_PRESUPUESTO, getEstadoPresupuesto, formatDate, formatCurrency } from "@/lib/constants";
+import { ESTADOS_PRESUPUESTO, getEstadoPresupuesto, getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
 import { useEmpresa } from "@/lib/empresa-context";
 
 interface Presupuesto {
@@ -361,6 +361,12 @@ export default function PresupuestoDetailPage() {
     }
   }
 
+  async function handleDeleteItem(itemId: string) {
+    const res = await fetch(`/api/presupuestos/${id}/items/${itemId}`, { method: "DELETE" });
+    if (res.ok) { toast.success("Ítem eliminado"); fetchPres(); }
+    else toast.error("Error al eliminar ítem");
+  }
+
   async function handleDelete() {
     const res = await fetch(`/api/presupuestos/${id}`, { method: "DELETE" });
     if (res.ok) {
@@ -415,18 +421,27 @@ export default function PresupuestoDetailPage() {
               <CardHeader><CardTitle className="text-base">Ítems</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-0">
-                  <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-500 border-b pb-2 mb-2">
+                  <div className="grid grid-cols-13 gap-2 text-xs font-medium text-gray-500 border-b pb-2 mb-2" style={{gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr 1fr auto auto auto auto auto auto auto"}}>
                     <div className="col-span-6">Descripción</div>
                     <div className="col-span-2 text-center">Cant.</div>
                     <div className="col-span-2 text-right">Precio Unit.</div>
                     <div className="col-span-2 text-right">Total</div>
+                    <div className="col-span-1"></div>
                   </div>
                   {pres.items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-12 gap-2 py-2 border-b last:border-0 text-sm">
-                      <div className="col-span-6">{item.descripcion}</div>
-                      <div className="col-span-2 text-center">{item.cantidad}</div>
-                      <div className="col-span-2 text-right">{formatCurrency(item.precioUnitario)}</div>
-                      <div className="col-span-2 text-right font-medium">{formatCurrency(item.precioTotal)}</div>
+                    <div key={item.id} className="grid gap-2 py-2 border-b last:border-0 text-sm items-center" style={{gridTemplateColumns:"6fr 2fr 2fr 2fr auto"}}>
+                      <div>{item.descripcion}</div>
+                      <div className="text-center">{item.cantidad}</div>
+                      <div className="text-right">{formatCurrency(item.precioUnitario)}</div>
+                      <div className="text-right font-medium">{formatCurrency(item.precioTotal)}</div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="text-red-500 hover:text-red-700 transition-colors pl-2"
+                        title="Eliminar ítem"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
