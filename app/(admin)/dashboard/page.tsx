@@ -46,12 +46,12 @@ export default async function DashboardPage() {
     prisma.ordenTrabajo.findMany({
       where: { ...tecnicoFilter, estado: "ENTREGADO" },
       orderBy: { fechaCierre: "asc" },
-      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } } },
+      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { name: true } } },
     }),
     prisma.ordenTrabajo.findMany({
       where: { ...tecnicoFilter, estado: { not: "ENTREGADO" } },
       orderBy: { fechaIngreso: "asc" },
-      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } } },
+      include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { name: true } } },
     }),
     prisma.ordenTrabajo.groupBy({
       by: ["estado"],
@@ -291,6 +291,7 @@ function OrdenTable({ ordenes, estadoColors, estadoLabels }: {
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Nro</th>
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Cliente</th>
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground hidden md:table-cell">Equipo</th>
+          <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground hidden lg:table-cell">Técnico</th>
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Ubic.</th>
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground hidden md:table-cell">Presup.</th>
           <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground">Estado</th>
@@ -307,6 +308,9 @@ function OrdenTable({ ordenes, estadoColors, estadoLabels }: {
             <td className="px-3 py-1.5 text-foreground">{orden.cliente.nombre}</td>
             <td className="px-3 py-1.5 text-muted-foreground hidden md:table-cell">
               {orden.marca?.nombre ?? ""} {orden.modelo ?? ""}
+            </td>
+            <td className="px-3 py-1.5 text-muted-foreground hidden lg:table-cell">
+              {orden.tecnico?.name ?? <span className="text-gray-300">—</span>}
             </td>
             <td className="px-3 py-1.5">
               <span className={`px-2 py-1 rounded font-bold text-sm ${
