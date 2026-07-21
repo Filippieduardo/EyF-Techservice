@@ -230,6 +230,11 @@ export default function OrdenDetailPage() {
       toast.error("Necesitás un presupuesto generado para cambiar el estado");
       return;
     }
+    const requiereDiagnostico = ["DIAGNOSTICADO", "ESPERANDO_REPUESTO", "EN_REPARACION"];
+    if (requiereDiagnostico.includes(estadoForm.estado) && !form.diagnostico?.trim()) {
+      toast.error("Debe completar el campo Diagnóstico antes de cambiar a este estado");
+      return;
+    }
     if (estadoForm.estado === "ENTREGADO" && !estadoForm.fechaEntrega) {
       toast.error("Ingresar fecha de entrega");
       fechaEntregaRef.current?.focus();
