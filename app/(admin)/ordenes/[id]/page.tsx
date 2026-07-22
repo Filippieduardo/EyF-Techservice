@@ -78,6 +78,7 @@ export default function OrdenDetailPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [confirmUbicacion, setConfirmUbicacion] = useState(false);
   const [confirmSalir, setConfirmSalir] = useState(false);
+  const [ubicacionCambiada, setUbicacionCambiada] = useState(false);
   const skipDirtyRef = useRef(true);
 
   async function fetchOrden() {
@@ -105,6 +106,7 @@ export default function OrdenDetailPage() {
     });
     setEstadoForm({ estado: data.estado, nota: "", fechaEntrega: "" });
     setIsDirty(false);
+    setUbicacionCambiada(false);
   }
 
   async function fetchRepuestosUsados() {
@@ -136,6 +138,18 @@ export default function OrdenDetailPage() {
     }
     setIsDirty(true);
   }, [form, estadoForm]);
+
+  // Interceptar cierre de pestaña / recarga cuando hay cambios sin guardar
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
 
   async function buscarRepuesto(q: string) {
     setRepuestoSearch(q);
@@ -510,7 +524,7 @@ export default function OrdenDetailPage() {
               </div>
               <div className="space-y-1">
                 <Label>Fecha Traslado</Label>
-                <Input type="date" value={form.fechaEnvio} onChange={e => setForm({ ...form, fechaEnvio: e.target.value })} disabled={tecnicoBlocked} />
+                <Input type="date" value={form.fechaEnvio} onChange={e => setForm({ ...form, fechaEnvio: e.target.value })} disabled={tecnicoBlocked || !ubicacionCambiada} />
               </div>
               <div className="space-y-1">
                 <Label>Ubicación Actual</Label>
@@ -677,10 +691,12 @@ export default function OrdenDetailPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setForm((f: any) => ({ ...f, ubicacionActual: f.ubicacionActual === "LOCAL" ? "TALLER" : "LOCAL" }));
+              setUbicacionCambiada(true);
             }}>No</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               const today = new Date().toISOString().split("T")[0];
               setForm((f: any) => ({ ...f, ubicacionActual: f.ubicacionActual === "LOCAL" ? "TALLER" : "LOCAL", fechaEnvio: today }));
+              setUbicacionCambiada(true);
             }}>Sí</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

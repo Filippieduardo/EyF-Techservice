@@ -3,23 +3,24 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Printer, AlertTriangle, LogOut, CheckCircle, XCircle } from "lucide-react";
+import Link from "next/link";
+import { ClipboardList, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
 
-// ── Estilos de estado de orden ────────────────────────────
-const ORDEN_ESTADO: Record<string, { bg: string; label: string }> = {
-  INGRESADO:          { bg: "bg-gray-600",   label: "Ingresado" },
-  EN_DIAGNOSTICO:     { bg: "bg-blue-600",   label: "En Diagnóstico" },
-  DIAGNOSTICADO:      { bg: "bg-cyan-600",   label: "Diagnosticado" },
-  ESPERANDO_REPUESTO: { bg: "bg-amber-500",  label: "Esp. Repuesto" },
-  EN_REPARACION:      { bg: "bg-orange-600", label: "En Reparación" },
-  TERMINADO:          { bg: "bg-green-600",  label: "Terminado" },
-  ENTREGADO:          { bg: "bg-slate-400",  label: "Entregado" },
-  NO_REPARABLE:       { bg: "bg-red-700",    label: "No Reparable" },
-  RMA:                { bg: "bg-purple-600", label: "RMA" },
-  CANCELADO:          { bg: "bg-red-400",    label: "Cancelado" },
+// ── Estilos de estado de orden (idénticos a lib/constants.ts) ────────────────
+const ORDEN_ESTADO: Record<string, { color: string; label: string }> = {
+  INGRESADO:          { color: "bg-green-600 text-white",            label: "INGRESADO" },
+  EN_DIAGNOSTICO:     { color: "bg-green-600 text-white",            label: "EN DIAGNÓSTICO" },
+  DIAGNOSTICADO:      { color: "bg-green-600 text-white",            label: "DIAGNOSTICADO" },
+  ESPERANDO_REPUESTO: { color: "bg-purple-600 text-white",           label: "ESPERANDO REPUESTO" },
+  EN_REPARACION:      { color: "bg-yellow-400 text-black",           label: "EN REPARACIÓN" },
+  TERMINADO:          { color: "bg-sky-400 text-white",              label: "TERMINADO" },
+  ENTREGADO:          { color: "bg-sky-400 text-white",              label: "ENTREGADO" },
+  NO_REPARABLE:       { color: "bg-red-600 text-white",              label: "NO REPARABLE" },
+  CANCELADO:          { color: "bg-red-600 text-white",              label: "CANCELADO" },
+  RMA:                { color: "bg-orange-500 text-black font-bold", label: "RMA" },
 };
 
 // ── Estilos de estado de presupuesto ─────────────────────
@@ -30,8 +31,13 @@ const PRES_ESTADO: Record<string, { bg: string; label: string }> = {
   VENCIDO:   { bg: "bg-gray-500",   label: "Vencido" },
 };
 
-function EstadoBadge({ estado, map }: { estado: string; map: Record<string, { bg: string; label: string }> }) {
-  const s = map[estado] ?? { bg: "bg-gray-500", label: estado };
+function OrdenEstadoBadge({ estado }: { estado: string }) {
+  const s = ORDEN_ESTADO[estado] ?? { color: "bg-gray-500 text-white", label: estado };
+  return <span className={`text-xs px-3 py-1 rounded-full font-semibold ${s.color}`}>{s.label}</span>;
+}
+
+function PresEstadoBadge({ estado }: { estado: string }) {
+  const s = PRES_ESTADO[estado] ?? { bg: "bg-gray-500", label: estado };
   return <span className={`text-xs px-3 py-1 rounded-full font-semibold text-white ${s.bg}`}>{s.label}</span>;
 }
 
@@ -297,7 +303,6 @@ export default function PortalPage() {
   const [loading, setLoading] = useState(true);
   const [empresa, setEmpresa] = useState<EmpresaData | null>(null);
   const [printingPres, setPrintingPres] = useState<PresPortal | null>(null);
-  const [confirm, setConfirm] = useState<{ id: string; accion: "APROBADO" | "RECHAZADO" } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -327,29 +332,8 @@ export default function PortalPage() {
     }
   }, [printingPres]);
 
-  async function confirmarYResponder() {
-    if (!confirm) return;
-    const { id, accion } = confirm;
-    setConfirm(null);
-    const res = await fetch("/api/portal/presupuestos", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, accion }),
-    });
-    if (res.ok) {
-      toast.success(accion === "APROBADO" ? "Presupuesto aprobado" : "Presupuesto rechazado");
-      fetchData();
-    } else {
-      toast.error("Error al procesar");
-    }
-  }
 
-  function handleImprimir(presId: string) {
-    const pres = presupuestosMap.get(presId);
-    if (pres) setPrintingPres(pres);
-  }
-
-  if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
+if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
 
   return (
     <>
@@ -361,7 +345,7 @@ export default function PortalPage() {
             <h1 className="text-2xl font-bold">Mis Equipos</h1>
             <p className="text-gray-500 text-sm">Consultá el estado de tus equipos y presupuestos</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => signOut({ callbackUrl: "/portal/login" })}>
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={() => signOut({ callbackUrl: "/portal/login" })}>
             <LogOut className="h-4 w-4" />Salir
           </Button>
         </div>
@@ -382,7 +366,7 @@ export default function PortalPage() {
                       {/* Nro orden + estado */}
                       <div className="flex items-center gap-3 flex-wrap">
                         <CardTitle className="text-xl font-mono text-white tracking-wide">{o.numero}</CardTitle>
-                        <EstadoBadge estado={o.estado} map={ORDEN_ESTADO} />
+                        <OrdenEstadoBadge estado={o.estado} />
                       </div>
                       {/* Equipo */}
                       <p className="text-sm font-medium text-white">
@@ -402,8 +386,10 @@ export default function PortalPage() {
                       {o.presupuesto && (
                         <div className="flex items-center gap-2 pt-0.5">
                           <span className="text-xs font-medium" style={{ color: "oklch(0.85 0.05 292)" }}>Presupuesto:</span>
-                          <span className="text-xl font-mono text-white tracking-wide">{o.presupuesto.numero}</span>
-                          <EstadoBadge estado={o.presupuesto.estado} map={PRES_ESTADO} />
+                          <Link href={`/portal/presupuesto/${o.presupuesto.id}`} className="text-xl font-mono text-white tracking-wide hover:underline underline-offset-2">
+                            {o.presupuesto.numero}
+                          </Link>
+                          <PresEstadoBadge estado={o.presupuesto.estado} />
                         </div>
                       )}
                     </div>
@@ -435,10 +421,10 @@ export default function PortalPage() {
                       <p className="text-xs font-semibold text-gray-500 mb-2 uppercase">Historial reciente:</p>
                       <div className="space-y-1.5">
                         {o.historial.map((h, i) => {
-                          const s = ORDEN_ESTADO[h.estado] ?? { bg: "bg-gray-500", label: h.estado };
+                          const s = ORDEN_ESTADO[h.estado] ?? { color: "bg-gray-500 text-white", label: h.estado };
                           return (
                             <div key={i} className="flex items-start gap-2 text-xs">
-                              <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 text-white ${s.bg}`}>{s.label}</span>
+                              <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${s.color}`}>{s.label}</span>
                               {h.nota && <span className="text-gray-700">{h.nota}</span>}
                               <span className="text-gray-500 ml-auto flex-shrink-0 font-medium">{formatDate(h.createdAt)}</span>
                             </div>
@@ -448,24 +434,6 @@ export default function PortalPage() {
                     </div>
                   )}
 
-                  {/* Acciones presupuesto */}
-                  {o.presupuesto && (
-                    <div className="flex gap-2 pt-1 border-t">
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleImprimir(o.presupuesto!.id)}>
-                        <Printer className="h-4 w-4" />Imprimir presupuesto
-                      </Button>
-                      {o.presupuesto.estado === "PENDIENTE" && (
-                        <>
-                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "APROBADO" })}>
-                            <CheckCircle className="h-4 w-4" />Aprobar
-                          </Button>
-                          <Button variant="outline" size="sm" className="flex-1 border-red-300 text-red-600 hover:bg-red-50 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "RECHAZADO" })}>
-                            <XCircle className="h-4 w-4" />Rechazar
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
@@ -473,38 +441,6 @@ export default function PortalPage() {
         )}
       </div>
 
-      {/* Modal de confirmación */}
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-amber-100 rounded-full p-2 flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900">
-                  {confirm.accion === "APROBADO" ? "¿Aprobar presupuesto?" : "¿Rechazar presupuesto?"}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  <strong>Atención:</strong> una vez que confirmes este cambio, el estado del presupuesto no podrá volver a modificarse.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setConfirm(null)}>Cancelar</Button>
-              {confirm.accion === "APROBADO" ? (
-                <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={confirmarYResponder}>
-                  <CheckCircle className="h-4 w-4" />Confirmar aprobación
-                </Button>
-              ) : (
-                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-2" onClick={confirmarYResponder}>
-                  <XCircle className="h-4 w-4" />Confirmar rechazo
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

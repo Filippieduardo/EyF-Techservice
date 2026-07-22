@@ -2,45 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
-  const session = await auth();
-  if (!session || (session.user as any).type !== "cliente") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const clienteId = (session.user as any).id as string;
-
-  const [presupuestos, clienteRows, presRows] = await Promise.all([
-    prisma.presupuesto.findMany({
-      where: { clienteId },
-      orderBy: { fecha: "desc" },
-      include: {
-        items: { select: { descripcion: true, cantidad: true, precioUnitario: true, precioTotal: true } },
-        orden: { select: { numero: true, modelo: true, marca: { select: { nombre: true } } } },
-      },
-    }),
-    prisma.$queryRawUnsafe<any[]>(
-      `SELECT nombre, "condicionIva", telefono, direccion, "dniCuit" FROM "Cliente" WHERE id = $1`, clienteId
-    ),
-    prisma.$queryRawUnsafe<any[]>(
-      `SELECT id, "observacionesCliente" FROM "Presupuesto" WHERE "clienteId" = $1`, clienteId
-    ),
-  ]);
-
-  const clienteData = clienteRows[0] ?? {};
-  const obsMap = Object.fromEntries(presRows.map((r: any) => [r.id, r.observacionesCliente ?? null]));
-
-  return NextResponse.json(presupuestos.map(p => ({
-    ...p,
-    clienteNombre: clienteData.nombre ?? "",
-    clienteCondicionIva: clienteData.condicionIva ?? "CONS. FINAL",
-    clienteTelefono: clienteData.telefono ?? null,
-    clienteDireccion: clienteData.direccion ?? null,
-    clienteDniCuit: clienteData.dniCuit ?? null,
-    observacionesCliente: obsMap[p.id] ?? null,
-  })));
-}
-
 export async function PUT(req: NextRequest) {
   const session = await auth();
   if (!session || (session.user as any).type !== "cliente") {
@@ -50,8 +11,8 @@ export async function PUT(req: NextRequest) {
   const clienteId = (session.user as any).id as string;
   const { id, accion } = await req.json();
 
-  if (!["APROBADO", "RECHAZADO"].includes(accion)) {
-    return NextResponse.json({ error: "Acción inválida" }, { status: 400 });
+  if (!id || !["APROBADO", "RECHAZADO"].includes(accion)) {
+    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
 
   const pres = await prisma.presupuesto.findFirst({
@@ -59,13 +20,13 @@ export async function PUT(req: NextRequest) {
   });
 
   if (!pres) {
-    return NextResponse.json({ error: "No encontrado o ya respondido" }, { status: 404 });
+    return NextResponse.json({ error: "No encontrado o ya procesado" }, { status: 404 });
   }
 
-  const updated = await prisma.presupuesto.update({
+  await prisma.presupuesto.update({
     where: { id },
-    data: { estado: accion as any },
+    data: { estado: accion },
   });
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ok: true });
 }
