@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   let i = 1;
 
   if (marcaId) { conditions.push(`r."marcaId" = $${i++}`); vals.push(marcaId); }
-  if (stockBajo) { conditions.push(`r."stockActual" <= r."stockMinimo"`); }
+  if (stockBajo) { conditions.push(`r."stockActual" > 0 AND r."stockActual" <= r."stockMinimo"`); }
   if (q) {
     conditions.push(`(r.descripcion ILIKE $${i} OR r."numeroParte" ILIKE $${i} OR r."codigoInterno" ILIKE $${i} OR c.nombre ILIKE $${i})`);
     vals.push(`%${q}%`);
