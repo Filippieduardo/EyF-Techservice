@@ -25,6 +25,7 @@ interface Cliente {
   condicionIva: string;
   dniCuit: string | null;
   direccion: string | null;
+  portalPassword: string | null;
   tienePasswordPortal: boolean;
   activo: boolean;
   ordenes: Array<{
@@ -73,6 +74,7 @@ export default function ClienteDetailPage() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<any>({});
   const [showEditPwd, setShowEditPwd] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
   const [cuitError, setCuitError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -239,8 +241,22 @@ export default function ClienteDetailPage() {
                 <div className="flex gap-2 items-start">
                   <dt className="text-gray-500 w-28 pt-1.5">Contraseña portal:</dt>
                   <dd className="flex-1">
-                    {cliente.tienePasswordPortal ? (
-                      <span className="font-mono text-gray-600 tracking-widest">••••••••</span>
+                    {cliente.portalPassword ? (
+                      <div className="relative max-w-xs">
+                        <Input
+                          readOnly
+                          type={showPwd ? "text" : "password"}
+                          value={cliente.portalPassword}
+                          className="pr-10 bg-gray-50 font-mono"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                          onClick={() => setShowPwd(s => !s)}
+                        >
+                          {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-gray-400 italic">Sin contraseña</span>
                     )}

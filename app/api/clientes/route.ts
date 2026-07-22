@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import bcrypt from "bcryptjs";
+
 const clienteSchema = z.object({
   nombre: z.string().min(1),
   email: z.string().email().optional().or(z.literal("")),
@@ -49,11 +49,10 @@ export async function POST(req: NextRequest) {
   const data = clienteSchema.parse(body);
 
   const whatsapp = data.whatsapp || data.telefono || null;
-  const hashedPassword = await bcrypt.hash(data.portalPassword, 10);
   const cliente = await prisma.$queryRawUnsafe<any[]>(
     `INSERT INTO "Cliente" (id, nombre, email, telefono, whatsapp, "condicionIva", "dniCuit", direccion, "portalPassword", activo, "createdAt", "updatedAt")
      VALUES (gen_random_uuid()::text,$1,$2,$3,$4,$5,$6,$7,$8,true,NOW(),NOW()) RETURNING *`,
-    data.nombre, data.email||null, data.telefono||null, whatsapp, data.condicionIva||'CONS. FINAL', data.dniCuit||null, data.direccion||null, hashedPassword
+    data.nombre, data.email||null, data.telefono||null, whatsapp, data.condicionIva||'CONS. FINAL', data.dniCuit||null, data.direccion||null, data.portalPassword
   ).then(r => r[0]);
   return NextResponse.json(cliente, { status: 201 });
 }
