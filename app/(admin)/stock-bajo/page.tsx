@@ -56,6 +56,7 @@ export default function StockBajoPage() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 15mm; }
+          html, body { background: #fff !important; }
           body > *:not(#print-portal) { display: none !important; }
           #print-portal { display: block !important; }
           #print-portal table { border-collapse: collapse; width: 100%; font-size: 11pt; }
