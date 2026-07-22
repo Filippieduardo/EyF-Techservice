@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { formatDate, formatCurrency } from "@/lib/constants";
 
 interface PresPortal {
@@ -199,6 +200,7 @@ export default function PortalPresupuestoPage() {
   const [empresa, setEmpresa] = useState<EmpresaData | null>(null);
   const [printing, setPrinting] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [confirm, setConfirm] = useState<"APROBADO" | "RECHAZADO" | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { fetch("/api/empresa").then(r => r.ok ? r.json() : null).then(setEmpresa); }, []);
@@ -215,7 +217,24 @@ export default function PortalPresupuestoPage() {
     }
   }, [printing]);
 
-if (!pres) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
+  async function responder() {
+    if (!confirm || !pres) return;
+    const accion = confirm;
+    setConfirm(null);
+    const res = await fetch("/api/portal/presupuestos", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: pres.id, accion }),
+    });
+    if (res.ok) {
+      toast.success(accion === "APROBADO" ? "Presupuesto aprobado" : "Presupuesto rechazado");
+      setPres(p => p ? { ...p, estado: accion } : p);
+    } else {
+      toast.error("Error al procesar");
+    }
+  }
+
+  if (!pres) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
 
   const descuentoEfectivo = Number(pres.descuento);
   const subtotal = Number(pres.subtotal);
@@ -293,8 +312,42 @@ if (!pres) return <div className="text-center py-12 text-gray-400">Cargando...</
           </CardContent>
         </Card>
 
+        {/* Aprobar / Rechazar */}
+        {pres.estado === "PENDIENTE" && (
+          <div className="flex gap-2">
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white gap-1.5" onClick={() => setConfirm("APROBADO")}>
+              <CheckCircle className="h-4 w-4" />Aprobar
+            </Button>
+            <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white gap-1.5" onClick={() => setConfirm("RECHAZADO")}>
+              <XCircle className="h-4 w-4" />Rechazar
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Modal confirmación */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-amber-100 rounded-full p-2 flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">{confirm === "APROBADO" ? "¿Aprobar presupuesto?" : "¿Rechazar presupuesto?"}</h3>
+                <p className="text-sm text-gray-500 mt-1"><strong>Atención:</strong> una vez que confirmes este cambio, el estado no podrá volver a modificarse.</p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setConfirm(null)}>Cancelar</Button>
+              {confirm === "APROBADO"
+                ? <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={responder}><CheckCircle className="h-4 w-4" />Confirmar aprobación</Button>
+                : <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-2" onClick={responder}><XCircle className="h-4 w-4" />Confirmar rechazo</Button>
+              }
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

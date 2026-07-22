@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ClipboardList, Printer, AlertTriangle, LogOut, CheckCircle, XCircle } from "lucide-react";
+import { ClipboardList, Printer, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
@@ -303,7 +303,6 @@ export default function PortalPage() {
   const [loading, setLoading] = useState(true);
   const [empresa, setEmpresa] = useState<EmpresaData | null>(null);
   const [printingPres, setPrintingPres] = useState<PresPortal | null>(null);
-  const [confirm, setConfirm] = useState<{ id: string; accion: "APROBADO" | "RECHAZADO" } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -333,22 +332,6 @@ export default function PortalPage() {
     }
   }, [printingPres]);
 
-  async function confirmarYResponder() {
-    if (!confirm) return;
-    const { id, accion } = confirm;
-    setConfirm(null);
-    const res = await fetch("/api/portal/presupuestos", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, accion }),
-    });
-    if (res.ok) {
-      toast.success(accion === "APROBADO" ? "Presupuesto aprobado" : "Presupuesto rechazado");
-      fetchData();
-    } else {
-      toast.error("Error al procesar");
-    }
-  }
 
   function handleImprimir(presId: string) {
     const pres = presupuestosMap.get(presId);
@@ -462,16 +445,6 @@ export default function PortalPage() {
                       <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleImprimir(o.presupuesto!.id)}>
                         <Printer className="h-4 w-4" />Imprimir presupuesto
                       </Button>
-                      {o.presupuesto.estado === "PENDIENTE" && (
-                        <>
-                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "APROBADO" })}>
-                            <CheckCircle className="h-4 w-4" />Aprobar
-                          </Button>
-                          <Button variant="outline" size="sm" className="flex-1 border-red-300 text-red-600 hover:bg-red-50 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "RECHAZADO" })}>
-                            <XCircle className="h-4 w-4" />Rechazar
-                          </Button>
-                        </>
-                      )}
                     </div>
                   )}
                 </CardContent>
@@ -481,38 +454,6 @@ export default function PortalPage() {
         )}
       </div>
 
-      {/* Modal de confirmación */}
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-amber-100 rounded-full p-2 flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900">
-                  {confirm.accion === "APROBADO" ? "¿Aprobar presupuesto?" : "¿Rechazar presupuesto?"}
-                </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  <strong>Atención:</strong> una vez que confirmes este cambio, el estado del presupuesto no podrá volver a modificarse.
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setConfirm(null)}>Cancelar</Button>
-              {confirm.accion === "APROBADO" ? (
-                <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={confirmarYResponder}>
-                  <CheckCircle className="h-4 w-4" />Confirmar aprobación
-                </Button>
-              ) : (
-                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white gap-2" onClick={confirmarYResponder}>
-                  <XCircle className="h-4 w-4" />Confirmar rechazo
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
