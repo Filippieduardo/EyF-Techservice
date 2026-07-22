@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session || (session.user as any).role !== "ADMIN") {
@@ -29,7 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (body.email) updateData.email = body.email.toLowerCase();
   if (body.role) updateData.role = body.role;
   if (body.activo !== undefined) updateData.activo = body.activo;
-  if (body.password) updateData.password = body.password;
+  if (body.password) updateData.password = await bcrypt.hash(body.password, 10);
 
   try {
     const user = await prisma.user.update({
@@ -44,4 +45,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
     return NextResponse.json({ error: "Error al actualizar" }, { status: 500 });
   }
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session || (session.user as any).role !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const ordenes = await prisma.$queryRawUnsafe<any[]>(`SELECT id FROM "OrdenTrabajo" WHERE "tecnicoId" = $1 LIMIT 1`, id);
+  if (ordenes.length > 0) {
+    return NextResponse.json({ error: "No se puede eliminar: el usuario tiene órdenes asignadas" }, { status: 400 });
+  }
+
+  await prisma.$executeRawUnsafe(`DELETE FROM "User" WHERE id = $1`, id);
+  return NextResponse.json({ ok: true });
 }

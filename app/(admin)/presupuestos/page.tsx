@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +22,10 @@ interface Presupuesto {
 }
 
 export default function PresupuestosPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  useEffect(() => { if (session && !isAdmin) router.replace("/dashboard"); }, [session, isAdmin]);
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("all");
@@ -62,7 +68,11 @@ export default function PresupuestosPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {ESTADOS_PRESUPUESTO.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+            {ESTADOS_PRESUPUESTO.map(e => (
+              <SelectItem key={e.value} value={e.value}>
+                <span className={`px-2 py-0.5 rounded text-xs font-bold ${e.color}`}>{e.label}</span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

@@ -93,7 +93,7 @@ export default function CategoriasPage() {
             <Input
               placeholder="Nombre de la categoría..."
               value={nueva}
-              onChange={e => setNueva(e.target.value)}
+              onChange={e => setNueva(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === "Enter" && agregar()}
             />
             <Button onClick={agregar} disabled={!nueva.trim()}>
@@ -115,7 +115,7 @@ export default function CategoriasPage() {
                 <>
                   <Input
                     value={editNombre}
-                    onChange={e => setEditNombre(e.target.value)}
+                    onChange={e => setEditNombre(e.target.value.toUpperCase())}
                     onKeyDown={e => e.key === "Enter" && guardarEdicion(cat.id)}
                     className="h-8 flex-1"
                     autoFocus

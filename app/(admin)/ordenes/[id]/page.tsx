@@ -8,15 +8,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { MarcaSelect } from "@/components/marca-select";
-import { ArrowLeft, Save, FileText, Clock, DollarSign, Plus, Trash2, Package, MapPin } from "lucide-react";
+import { ArrowLeft, Save, FileText, Clock, DollarSign, Plus, Trash2, Package, MapPin, Printer } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import {
   ESTADOS_ORDEN, TIPOS_EQUIPO, getEstadoOrden, getTipoEquipo,
-  formatDate, formatCurrency,
+  formatDate, formatCurrency, getEstadoPresupuesto,
 } from "@/lib/constants";
 
 interface Orden {
@@ -36,6 +37,7 @@ interface Orden {
   presupuestoAbonado: number;
   presupuestoId: string | null;
   fechaIngreso: string;
+  fechaCambioEstado: string | null;
   fechaEnvio: string | null;
   fechaEstimada: string | null;
   fechaCierre: string | null;
@@ -72,8 +74,14 @@ export default function OrdenDetailPage() {
   const [repuestoResults, setRepuestoResults] = useState<RepuestoSearch[]>([]);
   const [addingRepuesto, setAddingRepuesto] = useState<RepuestoSearch | null>(null);
   const [cantidadAdd, setCantidadAdd] = useState(1);
+  const [historialToDelete, setHistorialToDelete] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [confirmUbicacion, setConfirmUbicacion] = useState(false);
+  const [confirmSalir, setConfirmSalir] = useState(false);
+  const skipDirtyRef = useRef(true);
 
   async function fetchOrden() {
+    skipDirtyRef.current = true;
     const res = await fetch(`/api/ordenes/${id}`);
     const data = await res.json();
     setOrden(data);
@@ -89,13 +97,14 @@ export default function OrdenDetailPage() {
       observacionesCliente: data.observacionesCliente ?? "",
       costoTecnico: data.costoTecnico ?? "",
       presupuestoAbonado: data.presupuestoAbonado ?? 0,
-      notaEstado: data.notaEstado ?? "",
+      notaEstado: "",
       tecnicoId: data.tecnico?.id ?? "",
       fechaEstimada: data.fechaEstimada ? data.fechaEstimada.split("T")[0] : "",
       fechaEnvio: data.fechaEnvio ? data.fechaEnvio.split("T")[0] : "",
       ubicacionActual: data.ubicacionActual ?? "LOCAL",
     });
-    setEstadoForm({ estado: data.estado, nota: "" });
+    setEstadoForm({ estado: data.estado, nota: "", fechaEntrega: "" });
+    setIsDirty(false);
   }
 
   async function fetchRepuestosUsados() {
@@ -117,8 +126,16 @@ export default function OrdenDetailPage() {
   useEffect(() => {
     fetchOrden();
     fetchRepuestosUsados();
-    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then(setTecnicos);
+    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => (u.role === "TECNICO" || u.role === "ADMIN") && u.activo)));
   }, [id]);
+
+  useEffect(() => {
+    if (skipDirtyRef.current) {
+      skipDirtyRef.current = false;
+      return;
+    }
+    setIsDirty(true);
+  }, [form, estadoForm]);
 
   async function buscarRepuesto(q: string) {
     setRepuestoSearch(q);
@@ -212,6 +229,11 @@ export default function OrdenDetailPage() {
       toast.error("Necesitás un presupuesto generado para cambiar el estado");
       return;
     }
+    const requiereDiagnostico = ["DIAGNOSTICADO", "ESPERANDO_REPUESTO", "EN_REPARACION"];
+    if (requiereDiagnostico.includes(estadoForm.estado) && !form.diagnostico?.trim()) {
+      toast.error("Debe completar el campo Diagnóstico antes de cambiar a este estado");
+      return;
+    }
     if (estadoForm.estado === "ENTREGADO" && !estadoForm.fechaEntrega) {
       toast.error("Ingresar fecha de entrega");
       fechaEntregaRef.current?.focus();
@@ -230,7 +252,8 @@ export default function OrdenDetailPage() {
     });
     if (res.ok) {
       toast.success("Estado actualizado");
-      fetchOrden();
+      await fetchOrden();
+      setForm((f: any) => ({ ...f, notaEstado: "" }));
       fetchRepuestosUsados();
     } else {
       toast.error("Error al cambiar estado");
@@ -248,9 +271,6 @@ export default function OrdenDetailPage() {
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
       <div className="flex items-center gap-4 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Volver
-        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold font-mono">{orden.numero}</h1>
@@ -260,15 +280,27 @@ export default function OrdenDetailPage() {
           </div>
           <p className="text-gray-500 text-sm">{orden.cliente.nombre} · Ingreso: {formatDate(orden.fechaIngreso)}</p>
         </div>
-        <div className="flex gap-2">
-          {!orden.presupuesto && isAdmin && (
-            <Link href={`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`}>
-              <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-1" />Presupuesto</Button>
-            </Link>
-          )}
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => window.open(`/api/ordenes/${id}/print`, "_blank")}>
+              <Printer className="h-4 w-4 mr-1" />Imprimir
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" />{saving ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+          <div className="flex gap-2 self-stretch justify-between">
+            <Button
+              size="sm"
+              disabled={!!orden.presupuesto}
+              onClick={() => router.push(`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`)}
+            >
+              <FileText className="h-4 w-4 mr-1" />Presupuestar
+            </Button>
+            <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else router.back(); }}>
+              <ArrowLeft className="h-4 w-4 mr-1" /> Volver
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -278,9 +310,15 @@ export default function OrdenDetailPage() {
           <span className="text-gray-500">Fecha ingreso:</span>
           <span className="font-medium">{formatDate(orden.fechaIngreso)}</span>
         </div>
+        {orden.fechaCambioEstado && (
+          <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
+            <span className="text-gray-500">Últ. cambio estado:</span>
+            <span className="font-medium">{formatDate(orden.fechaCambioEstado)}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
           <span className="text-gray-500">Fecha traslado:</span>
-          <span className="font-medium">{orden.fechaEnvio ? formatDate(orden.fechaEnvio) : "—"}</span>
+          <span className="font-medium">{form.fechaEnvio ? formatDate(form.fechaEnvio + "T12:00:00") : "—"}</span>
         </div>
         <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
           <MapPin className="h-3.5 w-3.5 text-gray-400" />
@@ -289,14 +327,18 @@ export default function OrdenDetailPage() {
             {form.ubicacionActual === "TALLER" ? "Taller" : "Local"}
           </span>
         </div>
-        {presupuestada && (
-          <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
-            <span className="text-gray-500">Presupuesto:</span>
-            <span className={`font-medium ${presupuestoAceptado ? "text-green-600" : "text-yellow-600"}`}>
-              {orden.presupuesto!.estado}
+        <div className="flex items-center gap-2 border rounded px-3 py-1.5 text-sm">
+          <span className="text-gray-500">Presupuesto:</span>
+          {presupuestada ? (
+            <span className={`font-medium px-2 py-0.5 rounded text-xs ${getEstadoPresupuesto(orden.presupuesto!.estado).color}`}>
+              {getEstadoPresupuesto(orden.presupuesto!.estado).label}
             </span>
-          </div>
-        )}
+          ) : ["INGRESADO", "SIN_DIAGNOSTICAR", "EN_DIAGNOSTICO"].includes(orden.estado) ? (
+            <span className="font-medium px-2 py-0.5 rounded text-xs bg-red-600 text-white">NO PRESUPUESTADA</span>
+          ) : (
+            <span className="font-medium px-2 py-0.5 rounded text-xs bg-pink-600 text-black">NO PRES.</span>
+          )}
+        </div>
       </div>
 
       {tecnicoBlocked && (
@@ -327,11 +369,11 @@ export default function OrdenDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Modelo</Label>
-                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value })} />
+                  <Input value={form.modelo} onChange={e => setForm({ ...form, modelo: e.target.value.toUpperCase() })} />
                 </div>
                 <div className="space-y-1">
                   <Label>Número de Serie</Label>
-                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value })} />
+                  <Input value={form.numeroSerie} onChange={e => setForm({ ...form, numeroSerie: e.target.value.toUpperCase() })} />
                 </div>
               </div>
             </CardContent>
@@ -378,17 +420,19 @@ export default function OrdenDetailPage() {
                   </p>
                 )}
               </div>
-              <div className="space-y-1">
-                <Label className="flex items-center gap-1"><DollarSign className="h-3 w-3 text-blue-600" />Presupuesto Abonado</Label>
-                <Input
-                  className="max-w-40"
-                  placeholder="$ 0,00"
-                  value={form._abonadoEditing ? form.presupuestoAbonado : formatCurrency(form.presupuestoAbonado || 0)}
-                  onFocus={() => setForm((f: any) => ({ ...f, _abonadoEditing: true }))}
-                  onBlur={() => setForm((f: any) => ({ ...f, _abonadoEditing: false }))}
-                  onChange={e => setForm((f: any) => ({ ...f, presupuestoAbonado: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
-                />
-              </div>
+              {isAdmin && (
+                <div className="space-y-1">
+                  <Label className="flex items-center gap-1 text-blue-700 font-semibold text-sm"><DollarSign className="h-4 w-4 text-blue-600" />Presupuesto Abonado</Label>
+                  <Input
+                    className="max-w-48 text-lg font-bold border-blue-300 focus:border-blue-500"
+                    placeholder="$ 0,00"
+                    value={form._abonadoEditing ? form.presupuestoAbonado : formatCurrency(form.presupuestoAbonado || 0)}
+                    onFocus={() => setForm((f: any) => ({ ...f, _abonadoEditing: true }))}
+                    onBlur={() => setForm((f: any) => ({ ...f, _abonadoEditing: false }))}
+                    onChange={e => setForm((f: any) => ({ ...f, presupuestoAbonado: e.target.value.replace(/[^0-9.,]/g, "").replace(",", ".") }))}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -397,18 +441,26 @@ export default function OrdenDetailPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Cambiar Estado</CardTitle></CardHeader>
             <CardContent className="space-y-3">
+              {orden.fechaCambioEstado && (
+                <div className="text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">
+                  Fecha últ. cambio: <span className="font-semibold text-gray-700">{formatDate(orden.fechaCambioEstado)}</span>
+                </div>
+              )}
               <Select
                 value={estadoForm.estado}
                 onValueChange={v => {
                   const nuevo = v ?? estadoForm.estado;
                   setEstadoForm(f => ({ ...f, estado: nuevo }));
+                  // Cargar nota del último historial con ese estado (o limpiar si no tiene)
+                  const ultimoConEse = orden?.historial.find(h => h.estado === nuevo && h.nota);
+                  setForm((f: any) => ({ ...f, notaEstado: ultimoConEse?.nota ?? "" }));
                   if (nuevo === "ENTREGADO") {
                     setTimeout(() => fechaEntregaRef.current?.focus(), 50);
                   }
                 }}
                 disabled={tecnicoBlocked}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger><SelectValue>{getEstadoOrden(estadoForm.estado).label}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {ESTADOS_ORDEN.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                 </SelectContent>
@@ -464,7 +516,7 @@ export default function OrdenDetailPage() {
                 <Label>Ubicación Actual</Label>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, ubicacionActual: form.ubicacionActual === "LOCAL" ? "TALLER" : "LOCAL" })}
+                  onClick={() => setConfirmUbicacion(true)}
                   disabled={tecnicoBlocked}
                   className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded border font-medium text-sm transition-colors ${
                     form.ubicacionActual === "TALLER"
@@ -486,12 +538,12 @@ export default function OrdenDetailPage() {
                 {isAdmin ? (
                   <Link href={`/presupuestos/${orden.presupuesto.id}`} className="flex items-center justify-between hover:underline">
                     <span className="text-sm font-mono">{orden.presupuesto.numero}</span>
-                    <Badge className="text-xs">{orden.presupuesto.estado}</Badge>
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${getEstadoPresupuesto(orden.presupuesto.estado).color}`}>{getEstadoPresupuesto(orden.presupuesto.estado).label}</span>
                   </Link>
                 ) : (
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-mono">{orden.presupuesto.numero}</span>
-                    <Badge className="text-xs">{orden.presupuesto.estado}</Badge>
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${getEstadoPresupuesto(orden.presupuesto.estado).color}`}>{getEstadoPresupuesto(orden.presupuesto.estado).label}</span>
                   </div>
                 )}
                 {isAdmin && <p className="text-lg font-bold mt-1">{formatCurrency(orden.presupuesto.total)}</p>}
@@ -513,10 +565,8 @@ export default function OrdenDetailPage() {
                       </div>
                       <div className="flex items-center gap-3 ml-2 flex-shrink-0">
                         <span className="text-gray-600 font-mono text-xs">x{item.cantidad}</span>
-                        {item.descontado
-                          ? <span className="text-xs text-green-600 font-medium">✓ descontado</span>
-                          : <button type="button" onClick={() => quitarRepuesto(item.id)} className="text-red-400 hover:text-red-600 p-1" disabled={tecnicoBlocked}><Trash2 className="h-3 w-3" /></button>
-                        }
+                        {item.descontado && <span className="text-xs text-green-600 font-medium">✓ descontado</span>}
+                        <button type="button" onClick={() => quitarRepuesto(item.id)} className="text-red-400 hover:text-red-600 p-1" disabled={tecnicoBlocked} title="Eliminar y devolver al stock"><Trash2 className="h-3 w-3" /></button>
                       </div>
                     </div>
                   ))
@@ -535,12 +585,12 @@ export default function OrdenDetailPage() {
                     <div className="border rounded divide-y max-h-48 overflow-y-auto bg-white shadow-sm">
                       {repuestoResults.map(r => (
                         <div key={r.id} className="px-3 py-2 text-sm">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <span className="font-medium">{r.descripcion}</span>
-                              {r.numeroParte && <span className="text-gray-400 ml-2 text-xs">{r.numeroParte}</span>}
+                              <span className="font-medium truncate block">{r.descripcion}</span>
+                              {r.numeroParte && <span className="text-gray-400 text-xs">{r.numeroParte}</span>}
                             </div>
-                            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">Stock: {r.stockActual}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">Stock: {r.stockActual}</span>
                           </div>
                           {addingRepuesto?.id === r.id ? (
                             <div className="flex items-center gap-2 mt-2">
@@ -590,10 +640,22 @@ export default function OrdenDetailPage() {
                 {orden.historial.map((h) => {
                   const est = getEstadoOrden(h.estado);
                   return (
-                    <div key={h.id} className="border-l-2 border-gray-200 pl-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${est.color}`}>{est.label}</span>
-                      {h.nota && <p className="text-xs text-gray-600 mt-0.5">{h.nota}</p>}
-                      <p className="text-xs text-gray-400">{formatDate(h.createdAt)} · {h.user?.nombre ?? "Sistema"}</p>
+                    <div key={h.id} className="border-l-2 border-gray-200 pl-3 flex items-start justify-between gap-2">
+                      <div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${est.color}`}>{est.label}</span>
+                        {h.nota && <p className="text-xs text-gray-600 mt-0.5">{h.nota}</p>}
+                        <p className="text-xs text-gray-400">{formatDate(h.createdAt)} · {h.user?.nombre ?? "Sistema"}</p>
+                      </div>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          title="Eliminar estado"
+                          className="text-red-600 hover:text-red-800 transition-colors flex-shrink-0 mt-0.5"
+                          onClick={() => setHistorialToDelete(h.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -602,6 +664,66 @@ export default function OrdenDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Modal confirmar ubicación */}
+      <AlertDialog open={confirmUbicacion} onOpenChange={setConfirmUbicacion}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cambiar ubicación</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Desea registrar la fecha de traslado con la fecha de hoy?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setForm((f: any) => ({ ...f, ubicacionActual: f.ubicacionActual === "LOCAL" ? "TALLER" : "LOCAL" }));
+            }}>No</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              const today = new Date().toISOString().split("T")[0];
+              setForm((f: any) => ({ ...f, ubicacionActual: f.ubicacionActual === "LOCAL" ? "TALLER" : "LOCAL", fechaEnvio: today }));
+            }}>Sí</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal confirmar salir sin guardar */}
+      <AlertDialog open={confirmSalir} onOpenChange={setConfirmSalir}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Salir sin guardar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hay cambios sin guardar en la orden. ¿Desea salir de todas formas?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.back()}>Sí, salir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!historialToDelete} onOpenChange={(open) => !open && setHistorialToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este estado del historial?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setHistorialToDelete(null)}>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                const idToDelete = historialToDelete;
+                setHistorialToDelete(null);
+                await fetch(`/api/historial/${idToDelete}`, { method: "DELETE" });
+                await fetchOrden();
+              }}
+            >
+              Sí, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

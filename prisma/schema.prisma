@@ -14,6 +14,7 @@ enum UserRole {
 
 enum EstadoOrden {
   INGRESADO
+  SIN_DIAGNOSTICAR
   EN_DIAGNOSTICO
   DIAGNOSTICADO
   ESPERANDO_REPUESTO
@@ -22,6 +23,7 @@ enum EstadoOrden {
   ENTREGADO
   NO_REPARABLE
   CANCELADO
+  RMA
 }
 
 enum TipoEquipo {
@@ -54,6 +56,21 @@ enum UbicacionActual {
   TALLER
 }
 
+model Empresa {
+  id              String   @id @default(cuid())
+  nombre          String
+  domicilio       String?
+  condicionIva    String   @default("INSCRIPTO")
+  dniCuit         String?
+  telefono        String?
+  telServTecnico  String?
+  whatsapp        String?
+  email           String?
+  logoPath        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -74,6 +91,8 @@ model Cliente {
   nombre          String
   email           String?  @unique
   telefono        String?
+  whatsapp        String?
+  condicionIva    String   @default("CONS. FINAL")
   dniCuit         String?
   direccion       String?
   portalPassword  String?
@@ -93,6 +112,7 @@ model Marca {
 
   ordenes          OrdenTrabajo[]
   compatibilidades RepuestoCompatibilidad[]
+  repuestos        Repuesto[]
 }
 
 model OrdenTrabajo {
@@ -104,6 +124,7 @@ model OrdenTrabajo {
   fechaCierre      DateTime?
   ubicacionActual  UbicacionActual @default(LOCAL)
   estado           EstadoOrden @default(INGRESADO)
+  fechaCambioEstado DateTime?
   tipoEquipo       TipoEquipo
   marcaId          String?
   modelo           String?
@@ -193,6 +214,7 @@ model Repuesto {
   numeroParte     String?
   descripcion     String
   categoriaId     String?
+  marcaId         String?
   stockActual     Int       @default(0)
   stockMinimo     Int       @default(1)
   precioCosto     Decimal   @db.Decimal(10, 2) @default(0)
@@ -202,6 +224,7 @@ model Repuesto {
   updatedAt       DateTime  @updatedAt
 
   categoria        Categoria?              @relation(fields: [categoriaId], references: [id])
+  marca            Marca?                  @relation(fields: [marcaId], references: [id])
   compatibilidades RepuestoCompatibilidad[]
   movimientos      MovimientoStock[]
   presupuestoItems PresupuestoItem[]
