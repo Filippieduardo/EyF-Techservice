@@ -41,7 +41,7 @@ export default function Page() {
           </div>
           {rows.map((r, i) => (
             <div key={i} className={`grid grid-cols-4 px-3 py-2 border-t items-center ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
-              <div className="font-medium">{getEstadoOrden(r.estado)}</div>
+              <div className="font-medium">{getEstadoOrden(r.estado)?.label ?? r.estado}</div>
               <div className="text-center font-bold">{r.cantidad}</div>
               <div className="text-center text-gray-500">{r.porcentaje}%</div>
               <div className="pr-4"><div className="h-3 rounded-full bg-blue-500" style={{ width: `${r.porcentaje}%`, minWidth: r.cantidad > 0 ? "4px" : "0" }} /></div>
