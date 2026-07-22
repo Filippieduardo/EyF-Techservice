@@ -321,6 +321,7 @@ export default function PresupuestoDetailPage() {
   const empresa = useEmpresa();
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
+  useEffect(() => { if (session && !isAdmin) router.replace("/dashboard"); }, [session, isAdmin]);
   const [pres, setPres] = useState<Presupuesto | null>(null);
   const [estado, setEstado] = useState("");
   const [mounted, setMounted] = useState(false);

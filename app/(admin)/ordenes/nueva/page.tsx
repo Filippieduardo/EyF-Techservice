@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,9 @@ function formatCuit(raw: string | null): string {
 
 export default function NuevaOrdenPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  useEffect(() => { if (session && !isAdmin) router.replace("/ordenes"); }, [session, isAdmin]);
   const searchParams = useSearchParams();
   const preClienteId = searchParams.get("clienteId") ?? "";
 

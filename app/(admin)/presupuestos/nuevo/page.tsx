@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,8 @@ interface Item { descripcion: string; cantidad: number; precioUnitario: number; 
 
 export default function NuevoPresupuestoPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  useEffect(() => { if (session && (session.user as any)?.role !== "ADMIN") router.replace("/dashboard"); }, [session]);
   const searchParams = useSearchParams();
   const preClienteId = searchParams.get("clienteId") ?? "";
   const preOrdenId = searchParams.get("ordenId") ?? "";

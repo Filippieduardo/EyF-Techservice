@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +22,10 @@ interface Presupuesto {
 }
 
 export default function PresupuestosPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  useEffect(() => { if (session && !isAdmin) router.replace("/dashboard"); }, [session, isAdmin]);
   const [presupuestos, setPresupuestos] = useState<Presupuesto[]>([]);
   const [q, setQ] = useState("");
   const [estado, setEstado] = useState("all");
