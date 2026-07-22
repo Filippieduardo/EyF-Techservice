@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { MarcaSelect } from "@/components/marca-select";
@@ -651,10 +650,10 @@ export default function OrdenDetailPage() {
                         <button
                           type="button"
                           title="Eliminar estado"
-                          className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5"
+                          className="text-red-600 hover:text-red-800 transition-colors flex-shrink-0 mt-0.5"
                           onClick={() => setHistorialToDelete(h.id)}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
@@ -703,16 +702,16 @@ export default function OrdenDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={!!historialToDelete} onOpenChange={(open) => !open && setHistorialToDelete(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Eliminar estado del historial</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-gray-500">¿Estás seguro que querés eliminar este estado del historial? Esta acción no se puede deshacer.</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setHistorialToDelete(null)}>No</Button>
-            <Button
-              variant="destructive"
+      <AlertDialog open={!!historialToDelete} onOpenChange={(open) => !open && setHistorialToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar este estado del historial?</AlertDialogTitle>
+            <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setHistorialToDelete(null)}>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
               onClick={async () => {
                 const idToDelete = historialToDelete;
                 setHistorialToDelete(null);
@@ -721,10 +720,10 @@ export default function OrdenDetailPage() {
               }}
             >
               Sí, eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
