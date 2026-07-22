@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ClipboardList, Printer, LogOut } from "lucide-react";
+import { ClipboardList, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
@@ -333,12 +333,7 @@ export default function PortalPage() {
   }, [printingPres]);
 
 
-  function handleImprimir(presId: string) {
-    const pres = presupuestosMap.get(presId);
-    if (pres) setPrintingPres(pres);
-  }
-
-  if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
+if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
 
   return (
     <>
@@ -439,14 +434,6 @@ export default function PortalPage() {
                     </div>
                   )}
 
-                  {/* Acciones presupuesto */}
-                  {o.presupuesto && (
-                    <div className="flex gap-2 pt-1 border-t">
-                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleImprimir(o.presupuesto!.id)}>
-                        <Printer className="h-4 w-4" />Imprimir presupuesto
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
