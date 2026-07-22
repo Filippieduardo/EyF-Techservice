@@ -63,8 +63,8 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const stockCero = repuestosStock.filter((r: any) => r.stockActual === 0);
-  const stockBajo = repuestosStock.filter((r: any) => r.stockActual > 0 && r.stockActual <= r.stockMinimo + 1);
+  const stockCero = repuestosStock.filter((r: any) => Number(r.stockActual) === 0);
+  const stockBajo = repuestosStock.filter((r: any) => Number(r.stockActual) > 0 && Number(r.stockActual) <= Number(r.stockMinimo));
 
   // Fetch presupuesto estados separately
   const allOrdenes = [...ordenesEntregadas, ...ordenesActivas] as any[];
