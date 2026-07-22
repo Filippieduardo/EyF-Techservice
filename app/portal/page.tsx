@@ -108,6 +108,30 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
   const iva = inscripto ? neto * 0.21 : 0;
   const totalGeneral = neto + iva;
 
+  const s: Record<string, React.CSSProperties> = {
+    page: { fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", background: "#fff", width: "100%", boxSizing: "border-box" },
+    headerTable: { width: "100%", borderCollapse: "collapse", marginBottom: 0 },
+    headerLeftCell: { padding: "8px 10px", verticalAlign: "top" as const, width: "65%" },
+    headerRightCell: { borderLeft: "1px solid #000", padding: "6px 10px", verticalAlign: "top" as const, width: "35%" },
+    empresaNombre: { fontWeight: "bold", fontSize: "14pt", marginBottom: "3px" },
+    empresaDetalle: { fontSize: "8.5pt", lineHeight: "1.5", color: "#333" },
+    presTitle: { fontWeight: "bold", fontSize: "13pt", textAlign: "center", borderBottom: "1px solid #000", padding: "4px 0 4px", marginBottom: "6px" } as React.CSSProperties,
+    presGrid: { width: "100%", borderCollapse: "collapse", fontSize: "8.5pt" },
+    presGridCell: { padding: "2px 4px", border: "none" },
+    presGridLabel: { padding: "2px 4px", border: "none", color: "#555", fontWeight: "bold" as const },
+    clienteBox: { borderTop: "1px solid #000", padding: "6px 10px", marginBottom: 0, fontSize: "9pt" },
+    clienteLabel: { fontWeight: "bold", fontSize: "8.5pt", color: "#555" },
+    clienteNombre: { fontWeight: "bold", fontSize: "11pt" },
+    itemsTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", fontSize: "9pt" },
+    thCell: { background: "#e8e8e8", fontWeight: "bold", padding: "5px 8px", border: "1px solid #bbb", fontSize: "8.5pt" },
+    tdCell: { padding: "4px 8px", border: "none", borderBottom: "1px solid #e0e0e0" },
+    footerTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", marginTop: 0 },
+    footerLeft: { padding: "8px 10px", verticalAlign: "top", border: "none", borderRight: "1px solid #000", width: "55%", fontSize: "9pt" },
+    footerRight: { padding: "4px 0", border: "none", width: "45%", fontSize: "9.5pt" },
+    footerRow: { display: "flex", justifyContent: "space-between", padding: "2px 10px", borderBottom: "1px solid #e8e8e8" } as React.CSSProperties,
+    footerTotal: { display: "flex", justifyContent: "space-between", padding: "5px 10px", fontWeight: "bold", fontSize: "11pt", background: "#f0f0f0" } as React.CSSProperties,
+  };
+
   const printStyle = `
     @media print {
       @page { size: A4 portrait; margin: 15mm 12mm; }
@@ -118,26 +142,23 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
     @media screen { #print-portal-portal-pres { display: none !important; } }
   `;
 
-  const border = "1px solid #000";
-  const cellPad: React.CSSProperties = { padding: "4px 8px", border: "none", borderBottom: "1px solid #e0e0e0" };
-
   return createPortal(
     <div id="print-portal-portal-pres">
       <style dangerouslySetInnerHTML={{ __html: printStyle }} />
-      <div style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "10pt", color: "#000", background: "#fff" }}>
-        <div style={{ border, boxSizing: "border-box", width: "100%" }}>
+      <div style={s.page}>
+        <div style={{ border: "1px solid #000", boxSizing: "border-box", width: "100%" }}>
 
         {/* ── CABECERA ─────────────────────────── */}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <table style={s.headerTable}>
           <tbody><tr>
-            <td style={{ padding: "8px 10px", verticalAlign: "top", width: "65%" }}>
+            <td style={s.headerLeftCell}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
                 {empresa?.logoPath && (
                   <img src={`${empresa.logoPath}?t=1`} alt="Logo" style={{ width: "60px", height: "60px", objectFit: "contain", flexShrink: 0 }} />
                 )}
                 <div>
-                  <div style={{ fontWeight: "bold", fontSize: "14pt", marginBottom: "3px" }}>{empresa?.nombre ?? "TechService"}</div>
-                  <div style={{ fontSize: "8.5pt", lineHeight: "1.5", color: "#333" }}>
+                  <div style={s.empresaNombre}>{empresa?.nombre ?? "TechService"}</div>
+                  <div style={s.empresaDetalle}>
                     {empresa?.domicilio && <div><strong>Domicilio:</strong> {empresa.domicilio}</div>}
                     {(empresa?.telefono || empresa?.whatsapp) && (
                       <div>
@@ -155,14 +176,26 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
                 </div>
               </div>
             </td>
-            <td style={{ padding: "6px 10px", verticalAlign: "top", width: "35%", borderLeft: border }}>
-              <div style={{ fontWeight: "bold", fontSize: "13pt", textAlign: "center", borderBottom: border, paddingBottom: "4px", marginBottom: "6px" }}>PRESUPUESTO</div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8.5pt" }}>
+            <td style={s.headerRightCell}>
+              <div style={s.presTitle as React.CSSProperties}>PRESUPUESTO</div>
+              <table style={s.presGrid}>
                 <tbody>
-                  <tr><td style={{ padding: "2px 4px", fontWeight: "bold", color: "#555" }}>Comprobante N°</td><td style={{ padding: "2px 4px", fontWeight: "bold" }}>{pres.numero}</td></tr>
-                  <tr><td style={{ padding: "2px 4px", fontWeight: "bold", color: "#555" }}>Emisión</td><td style={{ padding: "2px 4px" }}>{formatDate(pres.fecha)}</td></tr>
-                  <tr><td style={{ padding: "2px 4px", fontWeight: "bold", color: "#555" }}>Vencimiento</td><td style={{ padding: "2px 4px" }}>{calcVencimiento(pres.fecha, pres.validezDias)}</td></tr>
-                  <tr><td style={{ padding: "2px 4px", fontWeight: "bold", color: "#555" }}>Validez</td><td style={{ padding: "2px 4px" }}>{pres.validezDias} días</td></tr>
+                  <tr>
+                    <td style={s.presGridLabel}>Comprobante N°</td>
+                    <td style={{ ...s.presGridCell, fontWeight: "bold" }}>{pres.numero}</td>
+                  </tr>
+                  <tr>
+                    <td style={s.presGridLabel}>Emisión</td>
+                    <td style={s.presGridCell}>{formatDate(pres.fecha)}</td>
+                  </tr>
+                  <tr>
+                    <td style={s.presGridLabel}>Vencimiento</td>
+                    <td style={s.presGridCell}>{calcVencimiento(pres.fecha, pres.validezDias)}</td>
+                  </tr>
+                  <tr>
+                    <td style={s.presGridLabel}>Validez</td>
+                    <td style={s.presGridCell}>{pres.validezDias} días</td>
+                  </tr>
                 </tbody>
               </table>
             </td>
@@ -170,58 +203,68 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
         </table>
 
         {/* ── DATOS DEL CLIENTE ────────────────── */}
-        <div style={{ borderTop: border, padding: "6px 10px", fontSize: "9pt" }}>
+        <div style={s.clienteBox}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <div>
-              <span style={{ fontWeight: "bold", fontSize: "8.5pt", color: "#555" }}>Presupuestado a:&nbsp;</span>
-              <span style={{ fontWeight: "bold", fontSize: "11pt" }}>{pres.clienteNombre}</span>
+              <span style={s.clienteLabel}>Presupuestado a:&nbsp;</span>
+              <span style={s.clienteNombre}>{pres.clienteNombre}</span>
             </div>
-            <span style={{ fontWeight: "bold", fontSize: "11pt", background: "#000", color: "#fff", padding: "2px 10px", borderRadius: "3px", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as React.CSSProperties}>{PRES_STYLES[pres.estado]?.label ?? pres.estado}</span>
+            <span style={{ ...s.clienteNombre, background: "#000", color: "#fff", padding: "2px 10px", borderRadius: "3px", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as React.CSSProperties}>
+              {PRES_STYLES[pres.estado]?.label ?? pres.estado}
+            </span>
           </div>
           <div style={{ marginTop: "3px", fontSize: "8.5pt", color: "#333", display: "flex", gap: "20px", flexWrap: "wrap" }}>
             {pres.clienteDireccion && <span><strong>Domicilio:</strong> {pres.clienteDireccion}</span>}
             {pres.clienteTelefono && <span><strong>Tel:</strong> {pres.clienteTelefono}</span>}
             {pres.clienteCondicionIva && <span><strong>Cond. IVA:</strong> {pres.clienteCondicionIva}</span>}
             {pres.clienteDniCuit && <span><strong>CUIT/DNI:</strong> {pres.clienteDniCuit}</span>}
-            {pres.orden && <span><strong>Orden N°:</strong> {pres.orden.numero}{pres.orden.marca?.nombre ? " — " + pres.orden.marca.nombre : ""}{pres.orden.modelo ? " " + pres.orden.modelo : ""}</span>}
+            {pres.orden && (
+              <span>
+                <strong>Orden N°:</strong> {pres.orden.numero}
+                {pres.orden.marca?.nombre ? " · " + pres.orden.marca.nombre : ""}
+                {pres.orden.modelo ? " " + pres.orden.modelo : ""}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* ── TABLA ÍTEMS ──────────────────────── */}
-        <table style={{ width: "100%", borderCollapse: "collapse", borderTop: border, fontSize: "9pt" }}>
+        {/* ── TABLA DE ÍTEMS ───────────────────── */}
+        <table style={s.itemsTable}>
           <thead>
-            <tr style={{ background: "#e8e8e8" }}>
-              <th style={{ padding: "5px 8px", border: "1px solid #bbb", textAlign: "left", width: "55%", fontSize: "8.5pt" }}>Descripción</th>
-              <th style={{ padding: "5px 8px", border: "1px solid #bbb", textAlign: "center", width: "8%", fontSize: "8.5pt" }}>Cant.</th>
-              <th style={{ padding: "5px 8px", border: "1px solid #bbb", textAlign: "right", width: "18%", fontSize: "8.5pt" }}>Precio Unitario</th>
-              <th style={{ padding: "5px 8px", border: "1px solid #bbb", textAlign: "right", width: "19%", fontSize: "8.5pt" }}>Subtotal</th>
+            <tr>
+              <th style={{ ...s.thCell, textAlign: "left", width: "55%" }}>Descripción</th>
+              <th style={{ ...s.thCell, textAlign: "center", width: "8%" }}>Cant.</th>
+              <th style={{ ...s.thCell, textAlign: "right", width: "18%" }}>Precio Unitario</th>
+              <th style={{ ...s.thCell, textAlign: "right", width: "19%" }}>Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {pres.items.map((item, idx) => (
               <tr key={idx} style={{ background: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
-                <td style={{ ...cellPad, textAlign: "left" }}>{item.descripcion}</td>
-                <td style={{ ...cellPad, textAlign: "center" }}>{item.cantidad}</td>
-                <td style={{ ...cellPad, textAlign: "right" }}>{formatCurrency(item.precioUnitario)}</td>
-                <td style={{ ...cellPad, textAlign: "right" }}>{formatCurrency(item.precioTotal)}</td>
+                <td style={{ ...s.tdCell, textAlign: "left" }}>{item.descripcion}</td>
+                <td style={{ ...s.tdCell, textAlign: "center" }}>{item.cantidad}</td>
+                <td style={{ ...s.tdCell, textAlign: "right" }}>{formatCurrency(item.precioUnitario)}</td>
+                <td style={{ ...s.tdCell, textAlign: "right" }}>{formatCurrency(item.precioTotal)}</td>
               </tr>
             ))}
             {pres.items.length < 8 && Array.from({ length: Math.max(0, 8 - pres.items.length) }).map((_, i) => (
-              <tr key={`e${i}`}>
-                <td style={{ ...cellPad, height: "20px" }}>&nbsp;</td>
-                <td style={cellPad}></td><td style={cellPad}></td><td style={cellPad}></td>
+              <tr key={`empty-${i}`}>
+                <td style={{ ...s.tdCell, height: "20px" }}>&nbsp;</td>
+                <td style={s.tdCell}></td>
+                <td style={s.tdCell}></td>
+                <td style={s.tdCell}></td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* ── PIE ──────────────────────────────── */}
-        <table style={{ width: "100%", borderCollapse: "collapse", borderTop: border }}>
+        {/* ── PIE: SON PESOS + TOTALES ─────────── */}
+        <table style={s.footerTable}>
           <tbody><tr>
-            <td style={{ padding: "8px 10px", verticalAlign: "top", border: "none", borderRight: border, width: "55%", fontSize: "9pt" }}>
+            <td style={s.footerLeft}>
               <div style={{ fontStyle: "italic", fontSize: "8.5pt", color: "#555", marginBottom: "4px" }}>Son Pesos:</div>
               <div style={{ fontWeight: "bold", fontSize: "9pt" }}>
-                {(numeroALetras(totalGeneral).charAt(0).toUpperCase() + numeroALetras(totalGeneral).slice(1))}.--
+                {numeroALetras(totalGeneral).charAt(0).toUpperCase() + numeroALetras(totalGeneral).slice(1)}.--
               </div>
               {pres.observacionesCliente && (
                 <div style={{ marginTop: "8px", fontSize: "8pt", color: "#333", borderTop: "1px solid #ddd", paddingTop: "4px" }}>
@@ -235,19 +278,11 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
               )}
             </td>
             <td style={{ padding: 0, verticalAlign: "top", border: "none" }}>
-              {[
-                ["Subtotal", formatCurrency(subtotal)],
-                ["Descuento", formatCurrency(descuentoEfectivo)],
-                ["Neto Gravado", formatCurrency(neto)],
-                [`IVA ${inscripto ? "21%" : "(no aplica)"}`, formatCurrency(iva)],
-              ].map(([label, val]) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "2px 10px", borderBottom: "1px solid #e8e8e8", fontSize: "9.5pt" }}>
-                  <span>{label}</span><span>{val}</span>
-                </div>
-              ))}
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 10px", fontWeight: "bold", fontSize: "11pt", background: "#f0f0f0" }}>
-                <span>TOTAL</span><span>{formatCurrency(totalGeneral)}</span>
-              </div>
+              <div style={s.footerRow}><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
+              <div style={s.footerRow}><span>Descuento</span><span>{formatCurrency(descuentoEfectivo)}</span></div>
+              <div style={s.footerRow}><span>Neto Gravado</span><span>{formatCurrency(neto)}</span></div>
+              <div style={s.footerRow}><span>IVA {inscripto ? "21%" : "(no aplica)"}</span><span>{formatCurrency(iva)}</span></div>
+              <div style={s.footerTotal}><span>TOTAL</span><span>{formatCurrency(totalGeneral)}</span></div>
             </td>
           </tr></tbody>
         </table>
