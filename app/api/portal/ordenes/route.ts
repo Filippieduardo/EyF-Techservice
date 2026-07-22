@@ -15,6 +15,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     include: {
       marca: { select: { nombre: true } },
+      presupuesto: { select: { id: true, numero: true, estado: true } },
       historial: {
         orderBy: { createdAt: "desc" },
         take: 5,
@@ -29,6 +30,7 @@ export async function GET() {
     estado: o.estado,
     tipoEquipo: o.tipoEquipo,
     modelo: o.modelo,
+    numeroSerie: o.numeroSerie,
     marca: o.marca?.nombre ?? null,
     fechaIngreso: o.fechaIngreso,
     fechaEstimada: o.fechaEstimada,
@@ -36,7 +38,7 @@ export async function GET() {
     diagnostico: o.diagnostico,
     trabajoRealizado: o.trabajoRealizado,
     historial: o.historial,
-    presupuestoId: o.presupuestoId,
+    presupuesto: o.presupuesto ? { id: o.presupuestoId!, numero: o.presupuesto.numero, estado: o.presupuesto.estado } : null,
   }));
 
   return NextResponse.json(ordenesPublicas);

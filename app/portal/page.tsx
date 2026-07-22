@@ -2,39 +2,38 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ClipboardList, FileText, CheckCircle, XCircle, Printer, AlertTriangle, LogOut } from "lucide-react";
+import { ClipboardList, Printer, AlertTriangle, LogOut, CheckCircle, XCircle } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { getTipoEquipo, formatDate, formatCurrency } from "@/lib/constants";
 
-// ── Helpers ──────────────────────────────────────────────
-const ESTADO_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  INGRESADO:          { bg: "bg-gray-600",   text: "text-white", label: "Ingresado" },
-  EN_DIAGNOSTICO:     { bg: "bg-blue-600",   text: "text-white", label: "En Diagnóstico" },
-  ESPERANDO_REPUESTO: { bg: "bg-amber-500",  text: "text-white", label: "Esp. Repuesto" },
-  EN_REPARACION:      { bg: "bg-orange-600", text: "text-white", label: "En Reparación" },
-  TERMINADO:          { bg: "bg-green-600",  text: "text-white", label: "Terminado" },
-  ENTREGADO:          { bg: "bg-gray-400",   text: "text-white", label: "Entregado" },
-  NO_REPARABLE:       { bg: "bg-red-700",    text: "text-white", label: "No Reparable" },
-  CANCELADO:          { bg: "bg-red-400",    text: "text-white", label: "Cancelado" },
+// ── Estilos de estado de orden ────────────────────────────
+const ORDEN_ESTADO: Record<string, { bg: string; label: string }> = {
+  INGRESADO:          { bg: "bg-gray-600",   label: "Ingresado" },
+  EN_DIAGNOSTICO:     { bg: "bg-blue-600",   label: "En Diagnóstico" },
+  DIAGNOSTICADO:      { bg: "bg-cyan-600",   label: "Diagnosticado" },
+  ESPERANDO_REPUESTO: { bg: "bg-amber-500",  label: "Esp. Repuesto" },
+  EN_REPARACION:      { bg: "bg-orange-600", label: "En Reparación" },
+  TERMINADO:          { bg: "bg-green-600",  label: "Terminado" },
+  ENTREGADO:          { bg: "bg-slate-400",  label: "Entregado" },
+  NO_REPARABLE:       { bg: "bg-red-700",    label: "No Reparable" },
+  RMA:                { bg: "bg-purple-600", label: "RMA" },
+  CANCELADO:          { bg: "bg-red-400",    label: "Cancelado" },
 };
 
-function EstadoBadge({ estado }: { estado: string }) {
-  const s = ESTADO_STYLES[estado] ?? { bg: "bg-gray-500", text: "text-white", label: estado };
-  return (
-    <span className={`text-xs px-3 py-1 rounded-full font-semibold ${s.bg} ${s.text}`}>{s.label}</span>
-  );
+// ── Estilos de estado de presupuesto ─────────────────────
+const PRES_ESTADO: Record<string, { bg: string; label: string }> = {
+  PENDIENTE: { bg: "bg-amber-500",  label: "Pendiente" },
+  APROBADO:  { bg: "bg-green-600",  label: "Aprobado" },
+  RECHAZADO: { bg: "bg-red-600",    label: "Rechazado" },
+  VENCIDO:   { bg: "bg-gray-500",   label: "Vencido" },
+};
+
+function EstadoBadge({ estado, map }: { estado: string; map: Record<string, { bg: string; label: string }> }) {
+  const s = map[estado] ?? { bg: "bg-gray-500", label: estado };
+  return <span className={`text-xs px-3 py-1 rounded-full font-semibold text-white ${s.bg}`}>{s.label}</span>;
 }
-
-const PRES_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  PENDIENTE:  { bg: "bg-amber-500",  text: "text-white", label: "Pendiente" },
-  APROBADO:   { bg: "bg-green-600",  text: "text-white", label: "Aprobado" },
-  RECHAZADO:  { bg: "bg-red-600",    text: "text-white", label: "Rechazado" },
-  VENCIDO:    { bg: "bg-gray-500",   text: "text-white", label: "Vencido" },
-};
 
 // ── Número a letras ───────────────────────────────────────
 const UNIDADES = ["","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve",
@@ -74,13 +73,27 @@ function calcVencimiento(fecha: string, dias: number): string {
 }
 
 // ── Interfaces ────────────────────────────────────────────
+interface PresupuestoInline {
+  id: string;
+  numero: string;
+  estado: string;
+}
+
 interface OrdenPortal {
-  id: string; numero: string; estado: string; tipoEquipo: string;
-  modelo: string | null; marca: string | null; fechaIngreso: string;
-  fechaEstimada: string | null; observacionesCliente: string | null;
-  diagnostico: string | null; trabajoRealizado: string | null;
+  id: string;
+  numero: string;
+  estado: string;
+  tipoEquipo: string;
+  modelo: string | null;
+  numeroSerie: string | null;
+  marca: string | null;
+  fechaIngreso: string;
+  fechaEstimada: string | null;
+  observacionesCliente: string | null;
+  diagnostico: string | null;
+  trabajoRealizado: string | null;
   historial: Array<{ estado: string; nota: string | null; createdAt: string }>;
-  presupuestoId: string | null;
+  presupuesto: PresupuestoInline | null;
 }
 
 interface PresPortal {
@@ -99,7 +112,7 @@ interface EmpresaData {
   email: string | null; logoPath: string | null;
 }
 
-// ── Portal de impresión ───────────────────────────────────
+// ── Portal de impresión de presupuesto ───────────────────
 function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData | null }) {
   const descuentoEfectivo = Number(pres.descuento);
   const subtotal = Number(pres.subtotal);
@@ -124,7 +137,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
     clienteNombre: { fontWeight: "bold", fontSize: "11pt" },
     itemsTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", fontSize: "9pt" },
     thCell: { background: "#e8e8e8", fontWeight: "bold", padding: "5px 8px", border: "1px solid #bbb", fontSize: "8.5pt" },
-    tdCell: { padding: "4px 8px", border: "none", borderBottom: "1px solid #e0e0e0" },
+    tdCell: { padding: "4px 8px", border: "none", borderBottom: "1px solid #e0e0e0", backgroundColor: "#fff" },
     footerTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", marginTop: 0, backgroundColor: "#fff" },
     footerLeft: { padding: "8px 10px", verticalAlign: "top", border: "none", borderRight: "1px solid #000", width: "55%", fontSize: "9pt", backgroundColor: "#fff" },
     footerRight: { padding: "4px 0", border: "none", width: "45%", fontSize: "9.5pt", backgroundColor: "#fff" },
@@ -149,7 +162,6 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
       <div style={s.page}>
         <div style={{ border: "1px solid #000", boxSizing: "border-box", width: "100%" }}>
 
-        {/* ── CABECERA ─────────────────────────── */}
         <table style={s.headerTable}>
           <tbody><tr>
             <td style={s.headerLeftCell}>
@@ -181,29 +193,16 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
               <div style={s.presTitle as React.CSSProperties}>PRESUPUESTO</div>
               <table style={s.presGrid}>
                 <tbody>
-                  <tr>
-                    <td style={s.presGridLabel}>Comprobante N°</td>
-                    <td style={{ ...s.presGridCell, fontWeight: "bold" }}>{pres.numero}</td>
-                  </tr>
-                  <tr>
-                    <td style={s.presGridLabel}>Emisión</td>
-                    <td style={s.presGridCell}>{formatDate(pres.fecha)}</td>
-                  </tr>
-                  <tr>
-                    <td style={s.presGridLabel}>Vencimiento</td>
-                    <td style={s.presGridCell}>{calcVencimiento(pres.fecha, pres.validezDias)}</td>
-                  </tr>
-                  <tr>
-                    <td style={s.presGridLabel}>Validez</td>
-                    <td style={s.presGridCell}>{pres.validezDias} días</td>
-                  </tr>
+                  <tr><td style={s.presGridLabel}>Comprobante N°</td><td style={{ ...s.presGridCell, fontWeight: "bold" }}>{pres.numero}</td></tr>
+                  <tr><td style={s.presGridLabel}>Emisión</td><td style={s.presGridCell}>{formatDate(pres.fecha)}</td></tr>
+                  <tr><td style={s.presGridLabel}>Vencimiento</td><td style={s.presGridCell}>{calcVencimiento(pres.fecha, pres.validezDias)}</td></tr>
+                  <tr><td style={s.presGridLabel}>Validez</td><td style={s.presGridCell}>{pres.validezDias} días</td></tr>
                 </tbody>
               </table>
             </td>
           </tr></tbody>
         </table>
 
-        {/* ── DATOS DEL CLIENTE ────────────────── */}
         <div style={s.clienteBox}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <div>
@@ -211,7 +210,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
               <span style={s.clienteNombre}>{pres.clienteNombre}</span>
             </div>
             <span style={{ ...s.clienteNombre, background: "#000", color: "#fff", padding: "2px 10px", borderRadius: "3px", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" } as React.CSSProperties}>
-              {PRES_STYLES[pres.estado]?.label ?? pres.estado}
+              {PRES_ESTADO[pres.estado]?.label ?? pres.estado}
             </span>
           </div>
           <div style={{ marginTop: "3px", fontSize: "8.5pt", color: "#333", display: "flex", gap: "20px", flexWrap: "wrap" }}>
@@ -229,7 +228,6 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
           </div>
         </div>
 
-        {/* ── TABLA DE ÍTEMS ───────────────────── */}
         <table style={s.itemsTable}>
           <thead>
             <tr>
@@ -251,15 +249,12 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
             {pres.items.length < 8 && Array.from({ length: Math.max(0, 8 - pres.items.length) }).map((_, i) => (
               <tr key={`empty-${i}`}>
                 <td style={{ ...s.tdCell, height: "20px" }}>&nbsp;</td>
-                <td style={s.tdCell}></td>
-                <td style={s.tdCell}></td>
-                <td style={s.tdCell}></td>
+                <td style={s.tdCell}></td><td style={s.tdCell}></td><td style={s.tdCell}></td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* ── PIE: SON PESOS + TOTALES ─────────── */}
         <table style={s.footerTable}>
           <tbody><tr>
             <td style={s.footerLeft}>
@@ -278,7 +273,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
                 </div>
               )}
             </td>
-            <td style={{ padding: 0, verticalAlign: "top", border: "none" }}>
+            <td style={{ padding: 0, verticalAlign: "top", border: "none", backgroundColor: "#fff" }}>
               <div style={s.footerRow}><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
               <div style={s.footerRow}><span>Descuento</span><span>{formatCurrency(descuentoEfectivo)}</span></div>
               <div style={s.footerRow}><span>Neto Gravado</span><span>{formatCurrency(neto)}</span></div>
@@ -288,7 +283,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
           </tr></tbody>
         </table>
 
-        </div>{/* fin recuadro exterior */}
+        </div>
       </div>
     </div>,
     document.body
@@ -298,7 +293,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
 // ── Página principal ──────────────────────────────────────
 export default function PortalPage() {
   const [ordenes, setOrdenes] = useState<OrdenPortal[]>([]);
-  const [presupuestos, setPresupuestos] = useState<PresPortal[]>([]);
+  const [presupuestosMap, setPresupuestosMap] = useState<Map<string, PresPortal>>(new Map());
   const [loading, setLoading] = useState(true);
   const [empresa, setEmpresa] = useState<EmpresaData | null>(null);
   const [printingPres, setPrintingPres] = useState<PresPortal | null>(null);
@@ -316,19 +311,18 @@ export default function PortalPage() {
       fetch("/api/portal/presupuestos"),
     ]);
     if (resO.ok) setOrdenes(await resO.json());
-    if (resP.ok) setPresupuestos(await resP.json());
+    if (resP.ok) {
+      const list: PresPortal[] = await resP.json();
+      setPresupuestosMap(new Map(list.map(p => [p.id, p])));
+    }
     setLoading(false);
   }
 
   useEffect(() => { fetchData(); }, []);
 
-  // Trigger window.print() after portal is rendered
   useEffect(() => {
     if (printingPres) {
-      const t = setTimeout(() => {
-        window.print();
-        setPrintingPres(null);
-      }, 80);
+      const t = setTimeout(() => { window.print(); setPrintingPres(null); }, 80);
       return () => clearTimeout(t);
     }
   }, [printingPres]);
@@ -350,6 +344,11 @@ export default function PortalPage() {
     }
   }
 
+  function handleImprimir(presId: string) {
+    const pres = presupuestosMap.get(presId);
+    if (pres) setPrintingPres(pres);
+  }
+
   if (loading) return <div className="text-center py-12 text-gray-400">Cargando...</div>;
 
   return (
@@ -367,181 +366,111 @@ export default function PortalPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="ordenes">
-          <TabsList>
-            <TabsTrigger value="ordenes" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Órdenes ({ordenes.length})
-            </TabsTrigger>
-            <TabsTrigger value="presupuestos" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Presupuestos ({presupuestos.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="ordenes" className="mt-4 space-y-3">
-            {ordenes.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No tenés órdenes registradas</p>
-              </div>
-            ) : (
-              ordenes.map((o) => (
-                <Card key={o.id} className="overflow-hidden">
-                  <CardHeader className="pb-0" style={{ background: "oklch(0.38 0.14 292)" }}>
-                    <div className="flex items-start justify-between flex-wrap gap-2 pb-3">
-                      <div>
-                        <CardTitle className="text-base font-mono text-white">{o.numero}</CardTitle>
-                        <p className="text-sm font-medium text-white mt-0.5">
-                          {getTipoEquipo(o.tipoEquipo)}
-                          {o.marca ? ` · ${o.marca}` : ""}
-                          {o.modelo ? ` ${o.modelo}` : ""}
-                        </p>
-                        <p className="text-xs mt-1" style={{ color: "oklch(0.85 0.05 292)" }}>
-                          Ingreso: <span className="text-white font-medium">{formatDate(o.fechaIngreso)}</span>
-                          {o.fechaEstimada && (
-                            <> · Estimado: <span className="text-white font-medium">{formatDate(o.fechaEstimada)}</span></>
-                          )}
-                        </p>
+        {ordenes.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>No tenés órdenes registradas</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {ordenes.map((o) => (
+              <Card key={o.id} className="overflow-hidden">
+                {/* ── Cabecera de la card ── */}
+                <CardHeader className="pb-0" style={{ background: "oklch(0.38 0.14 292)" }}>
+                  <div className="flex items-start justify-between flex-wrap gap-2 pb-3">
+                    <div className="space-y-1">
+                      {/* Nro orden + estado */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <CardTitle className="text-xl font-mono text-white tracking-wide">{o.numero}</CardTitle>
+                        <EstadoBadge estado={o.estado} map={ORDEN_ESTADO} />
                       </div>
-                      <EstadoBadge estado={o.estado} />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-3 space-y-3">
-                    {o.observacionesCliente && (
-                      <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
-                        <p className="font-semibold text-xs text-blue-600 mb-1">Observaciones:</p>
-                        {o.observacionesCliente}
-                      </div>
-                    )}
-                    <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800">
-                      <p className="font-semibold text-xs text-gray-500 mb-1">Diagnóstico:</p>
-                      {o.diagnostico
-                        ? <span>{o.diagnostico}</span>
-                        : <span className="text-gray-400 italic">Sin diagnóstico registrado</span>}
-                    </div>
-                    <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-900">
-                      <p className="font-semibold text-xs text-green-600 mb-1">Trabajo Realizado:</p>
-                      {o.trabajoRealizado
-                        ? <span>{o.trabajoRealizado}</span>
-                        : <span className="text-green-700 italic opacity-60">Sin trabajo registrado aún</span>}
-                    </div>
-                    {o.historial.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2 uppercase">Historial reciente:</p>
-                        <div className="space-y-1.5">
-                          {o.historial.map((h, i) => {
-                            const s = ESTADO_STYLES[h.estado] ?? { bg: "bg-gray-500", text: "text-white", label: h.estado };
-                            return (
-                              <div key={i} className="flex items-start gap-2 text-xs">
-                                <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${s.bg} ${s.text}`}>{s.label}</span>
-                                {h.nota && <span className="text-gray-700">{h.nota}</span>}
-                                <span className="text-gray-500 ml-auto flex-shrink-0 font-medium">{formatDate(h.createdAt)}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="presupuestos" className="mt-4 space-y-3">
-            {presupuestos.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No tenés presupuestos</p>
-              </div>
-            ) : (
-              presupuestos.map((p) => {
-                const st = PRES_STYLES[p.estado] ?? { bg: "bg-gray-500", text: "text-white", label: p.estado };
-                const descuentoEfectivo = Number(p.descuento);
-                const subtotal = Number(p.subtotal);
-                const neto = subtotal - descuentoEfectivo;
-                const inscripto = p.clienteCondicionIva === "INSCRIPTO";
-                const iva = inscripto ? neto * 0.21 : 0;
-                const totalGeneral = neto + iva;
-                return (
-                  <Card key={p.id} className="overflow-hidden">
-                    <CardHeader className="pb-0" style={{ background: "oklch(0.38 0.14 292)" }}>
-                      <div className="flex items-start justify-between flex-wrap gap-2 pb-3">
-                        <div>
-                          <CardTitle className="text-base font-mono text-white">{p.numero}</CardTitle>
-                          <p className="text-sm text-white mt-0.5">
-                            {formatDate(p.fecha)} · Válido {p.validezDias} días
-                          </p>
-                          {p.orden && (
-                            <p className="text-xs mt-0.5" style={{ color: "oklch(0.85 0.05 292)" }}>
-                              Orden: {p.orden.numero} {p.orden.marca?.nombre} {p.orden.modelo}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`text-sm px-3 py-1 rounded-full font-semibold ${st.bg} ${st.text}`}>{st.label}</span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-4 space-y-4">
-
-                      {/* Tabla de ítems completa */}
-                      <div className="border rounded overflow-hidden">
-                        <div className="grid grid-cols-12 gap-1 text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-2">
-                          <div className="col-span-5">Descripción</div>
-                          <div className="col-span-2 text-center">Cant.</div>
-                          <div className="col-span-2 text-right">P. Unit.</div>
-                          <div className="col-span-3 text-right">Total</div>
-                        </div>
-                        {p.items.map((item, i) => (
-                          <div key={i} className={`grid grid-cols-12 gap-1 text-sm px-3 py-2 border-t ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
-                            <div className="col-span-5">{item.descripcion}</div>
-                            <div className="col-span-2 text-center">{item.cantidad}</div>
-                            <div className="col-span-2 text-right text-gray-600">{formatCurrency(item.precioUnitario)}</div>
-                            <div className="col-span-3 text-right font-medium">{formatCurrency(item.precioTotal)}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Totales */}
-                      <div className="border rounded overflow-hidden text-sm">
-                        <div className="flex justify-between px-4 py-1.5 text-gray-500"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
-                        <div className="flex justify-between px-4 py-1.5 text-gray-500 border-t"><span>Descuento</span><span>{formatCurrency(descuentoEfectivo)}</span></div>
-                        <div className="flex justify-between px-4 py-1.5 text-gray-500 border-t"><span>Neto Gravado</span><span>{formatCurrency(neto)}</span></div>
-                        <div className="flex justify-between px-4 py-1.5 text-gray-500 border-t"><span>IVA {inscripto ? "21%" : "(no aplica)"}</span><span>{formatCurrency(iva)}</span></div>
-                        <div className="flex justify-between px-4 py-2 font-bold text-base bg-gray-100 border-t"><span>TOTAL</span><span>{formatCurrency(totalGeneral)}</span></div>
-                      </div>
-
-                      {p.observacionesCliente && (
-                        <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-gray-700">
-                          <p className="font-semibold text-xs text-green-700 mb-1">Observaciones:</p>
-                          {p.observacionesCliente}
+                      {/* Equipo */}
+                      <p className="text-sm font-medium text-white">
+                        {getTipoEquipo(o.tipoEquipo)}
+                        {o.marca ? ` · ${o.marca}` : ""}
+                        {o.modelo ? ` ${o.modelo}` : ""}
+                        {o.numeroSerie ? <span className="opacity-75"> · SN: {o.numeroSerie}</span> : ""}
+                      </p>
+                      {/* Fechas */}
+                      <p className="text-xs" style={{ color: "oklch(0.85 0.05 292)" }}>
+                        Ingreso: <span className="text-white font-medium">{formatDate(o.fechaIngreso)}</span>
+                        {o.fechaEstimada && (
+                          <> · Estimado: <span className="text-white font-medium">{formatDate(o.fechaEstimada)}</span></>
+                        )}
+                      </p>
+                      {/* Presupuesto inline */}
+                      {o.presupuesto && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span className="text-xs font-medium" style={{ color: "oklch(0.85 0.05 292)" }}>Presupuesto:</span>
+                          <span className="text-xl font-mono text-white tracking-wide">{o.presupuesto.numero}</span>
+                          <EstadoBadge estado={o.presupuesto.estado} map={PRES_ESTADO} />
                         </div>
                       )}
-                      {p.notas && <p className="text-sm text-gray-600 italic border-l-2 border-gray-300 pl-3">{p.notas}</p>}
+                    </div>
+                  </div>
+                </CardHeader>
 
-                      {/* Acciones */}
-                      <div className="flex gap-2 pt-1">
-                        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPrintingPres(p)}>
-                          <Printer className="h-4 w-4" />Imprimir
-                        </Button>
-                        {p.estado === "PENDIENTE" && (
-                          <>
-                            <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={() => setConfirm({ id: p.id, accion: "APROBADO" })}>
-                              <CheckCircle className="h-4 w-4" />Aprobar
-                            </Button>
-                            <Button variant="outline" className="flex-1 border-red-300 text-red-600 hover:bg-red-50 gap-2" onClick={() => setConfirm({ id: p.id, accion: "RECHAZADO" })}>
-                              <XCircle className="h-4 w-4" />Rechazar
-                            </Button>
-                          </>
-                        )}
+                <CardContent className="pt-3 space-y-3">
+                  {o.observacionesCliente && (
+                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-900">
+                      <p className="font-semibold text-xs text-blue-600 mb-1">Observaciones:</p>
+                      {o.observacionesCliente}
+                    </div>
+                  )}
+                  <div className="bg-gray-50 border border-gray-200 rounded p-3 text-sm text-gray-800">
+                    <p className="font-semibold text-xs text-gray-500 mb-1">Diagnóstico:</p>
+                    {o.diagnostico
+                      ? <span>{o.diagnostico}</span>
+                      : <span className="text-gray-400 italic">Sin diagnóstico registrado</span>}
+                  </div>
+                  <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-900">
+                    <p className="font-semibold text-xs text-green-600 mb-1">Trabajo Realizado:</p>
+                    {o.trabajoRealizado
+                      ? <span>{o.trabajoRealizado}</span>
+                      : <span className="text-green-700 italic opacity-60">Sin trabajo registrado aún</span>}
+                  </div>
+
+                  {o.historial.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-2 uppercase">Historial reciente:</p>
+                      <div className="space-y-1.5">
+                        {o.historial.map((h, i) => {
+                          const s = ORDEN_ESTADO[h.estado] ?? { bg: "bg-gray-500", label: h.estado };
+                          return (
+                            <div key={i} className="flex items-start gap-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 text-white ${s.bg}`}>{s.label}</span>
+                              {h.nota && <span className="text-gray-700">{h.nota}</span>}
+                              <span className="text-gray-500 ml-auto flex-shrink-0 font-medium">{formatDate(h.createdAt)}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </TabsContent>
-        </Tabs>
+                    </div>
+                  )}
+
+                  {/* Acciones presupuesto */}
+                  {o.presupuesto && (
+                    <div className="flex gap-2 pt-1 border-t">
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleImprimir(o.presupuesto!.id)}>
+                        <Printer className="h-4 w-4" />Imprimir presupuesto
+                      </Button>
+                      {o.presupuesto.estado === "PENDIENTE" && (
+                        <>
+                          <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "APROBADO" })}>
+                            <CheckCircle className="h-4 w-4" />Aprobar
+                          </Button>
+                          <Button variant="outline" size="sm" className="flex-1 border-red-300 text-red-600 hover:bg-red-50 gap-1.5" onClick={() => setConfirm({ id: o.presupuesto!.id, accion: "RECHAZADO" })}>
+                            <XCircle className="h-4 w-4" />Rechazar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modal de confirmación */}
@@ -562,9 +491,7 @@ export default function PortalPage() {
               </div>
             </div>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" className="flex-1" onClick={() => setConfirm(null)}>
-                Cancelar
-              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setConfirm(null)}>Cancelar</Button>
               {confirm.accion === "APROBADO" ? (
                 <Button className="flex-1 bg-green-600 hover:bg-green-700 gap-2" onClick={confirmarYResponder}>
                   <CheckCircle className="h-4 w-4" />Confirmar aprobación
