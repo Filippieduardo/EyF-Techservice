@@ -11,6 +11,7 @@ interface Row { periodo: string; cantidad: number; monto: number; }
 
 const añoAtras = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 export default function Page() {
   const [desde, setDesde] = useState(añoAtras());
@@ -30,9 +31,34 @@ export default function Page() {
     setBuscado(true); setLoading(false);
   }
 
+  const agrupLabel = agrupacion === "mes" ? "por mes" : "por semana";
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  Agrupado ${agrupLabel}  ·  Solo TERMINADAS/ENTREGADAS` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th>Período</th><th className="center">Órdenes</th><th className="right">Monto</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td style={{ fontWeight: "bold" }}>{r.periodo}</td>
+            <td className="center">{r.cantidad}</td>
+            <td className="right">{formatCurrency(r.monto)}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr>
+        <td>TOTAL</td>
+        <td className="center">{totalOrdenes}</td>
+        <td className="right">{formatCurrency(totalMonto)}</td>
+      </tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Facturación del Período">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Facturación del Período" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <div className="space-y-1">
@@ -44,7 +70,7 @@ export default function Page() {
         </div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>
       </div>
-      <p className="text-xs text-gray-500 no-print">Solo incluye órdenes TERMINADAS o ENTREGADAS.</p>
+      <p className="text-xs text-gray-500">Solo incluye órdenes TERMINADAS o ENTREGADAS.</p>
 
       {buscado && (
         <div className="border rounded overflow-hidden text-sm">

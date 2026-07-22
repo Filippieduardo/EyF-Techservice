@@ -9,6 +9,7 @@ interface Row { descripcion: string; numeroParte: string | null; categoria: stri
 
 const mesAtras = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 export default function Page() {
   const [desde, setDesde] = useState(mesAtras());
@@ -24,9 +25,31 @@ export default function Page() {
     setRows(data.rows); setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  Top ${rows.length} repuestos por salidas` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th className="center">#</th><th>Repuesto</th><th>N° Parte</th><th>Categoría</th><th className="center">Unidades usadas</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td className="center" style={{ fontWeight: "bold", color: "#9ca3af" }}>{i + 1}</td>
+            <td style={{ fontWeight: "500" }}>{r.descripcion}</td>
+            <td style={{ color: "#6b7280", fontSize: "0.85em" }}>{r.numeroParte ?? "—"}</td>
+            <td>{r.categoria}</td>
+            <td className="center" style={{ fontWeight: "bold", color: "#1d4ed8" }}>{r.cantidad}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr><td colSpan={4}>TOTAL UNIDADES</td><td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td></tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Repuestos más Utilizados (Top 20)">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Repuestos más Utilizados (Top 20)" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>
@@ -49,6 +72,7 @@ export default function Page() {
             </div>
           ))}
           {rows.length === 0 && <div className="px-3 py-4 text-center text-gray-400">Sin movimientos de salida en el período</div>}
+          {rows.length > 0 && <div className="grid grid-cols-5 px-3 py-2 border-t bg-gray-100 font-bold text-sm"><div className="col-span-4">TOTAL UNIDADES</div><div className="text-center">{rows.reduce((s, r) => s + r.cantidad, 0)}</div></div>}
         </div>
       )}
     </InformeLayout>

@@ -21,21 +21,45 @@ export default function Page() {
     setRows(data.rows); setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Órdenes sin movimiento hace más de ${dias} días  ·  ${rows.length} resultado${rows.length !== 1 ? "s" : ""}` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th>N° Orden</th><th>Cliente</th><th>Estado</th><th>Técnico</th><th className="center">Ingreso</th><th className="center">Último mov.</th><th className="center">Días sin mov.</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={r.diasSinMovimiento > 14 ? "danger" : r.diasSinMovimiento > 7 ? "warn" : i % 2 === 1 ? "alt" : ""}>
+            <td style={{ fontFamily: "monospace", fontWeight: "bold" }}>{r.numero}</td>
+            <td>{r.cliente}</td>
+            <td>{getEstadoOrden(r.estado)?.label ?? r.estado}</td>
+            <td>{r.tecnico}</td>
+            <td className="center">{formatDate(r.fechaIngreso)}</td>
+            <td className="center">{formatDate(r.ultimoMovimiento)}</td>
+            <td className="center" style={{ fontWeight: "bold" }}>{r.diasSinMovimiento}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr><td colSpan={7}>{rows.length} órdenes sin movimiento — Rojo: +14 días · Amarillo: +7 días</td></tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Órdenes sin Movimiento">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Órdenes sin Movimiento" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Sin movimiento hace más de (días)</Label><Input type="number" min={1} value={dias} onChange={e => setDias(e.target.value)} className="w-24" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>
       </div>
-      <p className="text-xs text-gray-500 no-print">Excluye órdenes TERMINADAS, ENTREGADAS, CANCELADAS y NO REPARABLES.</p>
+      <p className="text-xs text-gray-500">Excluye TERMINADAS, ENTREGADAS, CANCELADAS y NO REPARABLES.</p>
 
       {buscado && (
         <div className="border rounded overflow-hidden text-sm">
           <div className="grid grid-cols-6 bg-gray-100 font-semibold text-gray-600 text-xs px-3 py-2">
-            <div>N° Orden</div><div>Cliente</div><div>Estado</div><div>Técnico</div><div className="text-center">Último mov.</div><div className="text-center">Días sin mov.</div>
+            <div>N° Orden</div><div>Cliente</div><div>Estado</div><div>Técnico</div><div className="text-center">Último mov.</div><div className="text-center">Días</div>
           </div>
           {rows.map((r, i) => (
-            <div key={i} className={`grid grid-cols-6 px-3 py-2 border-t text-xs items-center ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
+            <div key={i} className={`grid grid-cols-6 px-3 py-2 border-t text-xs items-center ${r.diasSinMovimiento > 14 ? "bg-red-50" : r.diasSinMovimiento > 7 ? "bg-yellow-50" : i % 2 === 1 ? "bg-gray-50" : ""}`}>
               <div className="font-mono font-bold">{r.numero}</div>
               <div>{r.cliente}</div>
               <div>{getEstadoOrden(r.estado)?.label ?? r.estado}</div>

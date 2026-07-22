@@ -10,6 +10,7 @@ interface Row { nombre: string; email: string; telefono: string; cantidadOrdenes
 
 const añoAtras = () => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 export default function Page() {
   const [desde, setDesde] = useState(añoAtras());
@@ -25,9 +26,37 @@ export default function Page() {
     setRows(data.rows); setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  ${rows.length} cliente${rows.length !== 1 ? "s" : ""}` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th className="center">#</th><th>Cliente</th><th>Contacto</th><th className="center">Órdenes</th><th className="center">Terminadas</th><th className="right">Monto total</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td className="center" style={{ fontWeight: "bold", color: "#9ca3af" }}>{i + 1}</td>
+            <td style={{ fontWeight: "500" }}>{r.nombre}</td>
+            <td style={{ color: "#6b7280", fontSize: "0.85em" }}>{r.telefono !== "—" ? r.telefono : r.email}</td>
+            <td className="center" style={{ fontWeight: "bold" }}>{r.cantidadOrdenes}</td>
+            <td className="center" style={{ color: "#166534" }}>{r.ordenesTerminadas}</td>
+            <td className="right">{formatCurrency(r.montoTotal)}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr>
+        <td colSpan={3}>TOTAL</td>
+        <td className="center">{rows.reduce((s, r) => s + r.cantidadOrdenes, 0)}</td>
+        <td className="center">{rows.reduce((s, r) => s + r.ordenesTerminadas, 0)}</td>
+        <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.montoTotal, 0))}</td>
+      </tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Clientes Frecuentes">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Clientes Frecuentes" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>

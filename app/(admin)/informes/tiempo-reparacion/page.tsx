@@ -10,6 +10,7 @@ interface Row { tecnico: string; cantidad: number; promedioDias: number; monto: 
 
 const mesAtras = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 export default function Page() {
   const [desde, setDesde] = useState(mesAtras());
@@ -25,14 +26,43 @@ export default function Page() {
     setRows(data.rows); setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  Solo órdenes TERMINADAS o ENTREGADAS` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th>Técnico</th>
+        <th className="center">Órdenes</th>
+        <th className="center">Promedio días</th>
+        <th className="right">Monto total</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td>{r.tecnico}</td>
+            <td className="center">{r.cantidad}</td>
+            <td className="center" style={{ fontWeight: "bold" }}>{r.promedioDias} días</td>
+            <td className="right">{formatCurrency(r.monto)}</td>
+          </tr>
+        ))}
+      </tbody>
+      {rows.length > 0 && <tfoot><tr>
+        <td>TOTAL</td>
+        <td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td>
+        <td className="center">{Math.round(rows.reduce((s, r) => s + r.promedioDias, 0) / rows.length)} días prom.</td>
+        <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.monto, 0))}</td>
+      </tr></tfoot>}
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Tiempo Promedio de Reparación">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Tiempo Promedio de Reparación" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>
       </div>
-      <p className="text-xs text-gray-500 no-print">Solo incluye órdenes en estado TERMINADO o ENTREGADO.</p>
+      <p className="text-xs text-gray-500">Solo incluye órdenes TERMINADAS o ENTREGADAS.</p>
 
       {buscado && (
         <div className="border rounded overflow-hidden text-sm">

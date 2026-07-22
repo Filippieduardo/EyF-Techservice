@@ -10,6 +10,7 @@ interface Row { estado: string; cantidad: number; porcentaje: number; }
 
 const mesAtras = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 export default function Page() {
   const [desde, setDesde] = useState(mesAtras());
@@ -26,9 +27,35 @@ export default function Page() {
     setRows(data.rows); setTotal(data.total); setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  Total: ${total} órdenes` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th>Estado</th>
+        <th className="center">Cantidad</th>
+        <th className="center">Porcentaje</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td>{getEstadoOrden(r.estado)?.label ?? r.estado}</td>
+            <td className="center" style={{ fontWeight: "bold" }}>{r.cantidad}</td>
+            <td className="center">{r.porcentaje}%</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr>
+        <td>TOTAL</td>
+        <td className="center">{total}</td>
+        <td className="center">100%</td>
+      </tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Órdenes por Estado">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Órdenes por Estado" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>

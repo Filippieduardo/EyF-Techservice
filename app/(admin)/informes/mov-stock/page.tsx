@@ -10,6 +10,7 @@ interface Row { fecha: string; tipo: string; descripcion: string; numeroParte: s
 
 const mesAtras = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
+const fmt = (s: string) => s ? new Date(s).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
 const TIPO_COLOR: Record<string, string> = { ENTRADA: "text-green-700 font-bold", SALIDA: "text-red-600 font-bold", AJUSTE: "text-orange-600 font-bold" };
 
@@ -29,9 +30,38 @@ export default function Page() {
     setBuscado(true); setLoading(false);
   }
 
+  const filtrosTexto = buscado ? `Período: ${fmt(desde)} al ${fmt(hasta)}  ·  Entradas: ${totales.entradas}  ·  Salidas: ${totales.salidas}` : undefined;
+
+  const printTable = (
+    <table className="data">
+      <thead><tr>
+        <th className="center">Fecha</th><th>Tipo</th><th>Repuesto</th><th>Categoría</th><th className="center">Cant.</th><th className="right">P.Unit.</th><th className="right">Total</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
+            <td className="center">{formatDate(r.fecha)}</td>
+            <td style={{ fontWeight: "bold", color: r.tipo === "ENTRADA" ? "#166534" : r.tipo === "SALIDA" ? "#991b1b" : "#9a3412" }}>{r.tipo}</td>
+            <td>{r.descripcion}{r.numeroParte ? ` · ${r.numeroParte}` : ""}</td>
+            <td>{r.categoria}</td>
+            <td className="center">{r.cantidad}</td>
+            <td className="right">{formatCurrency(r.precioUnitario)}</td>
+            <td className="right">{formatCurrency(r.total)}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot><tr>
+        <td colSpan={4}>TOTAL</td>
+        <td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td>
+        <td />
+        <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.total, 0))}</td>
+      </tr></tfoot>
+    </table>
+  );
+
   return (
-    <InformeLayout titulo="Movimientos de Stock">
-      <div className="flex flex-wrap gap-3 items-end no-print mb-2">
+    <InformeLayout titulo="Movimientos de Stock" filtrosTexto={filtrosTexto} printTable={printTable}>
+      <div className="flex flex-wrap gap-3 items-end mb-2">
         <div className="space-y-1"><Label>Desde</Label><Input type="date" value={desde} onChange={e => setDesde(e.target.value)} className="w-36" /></div>
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <Button onClick={buscar} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">{loading ? "Buscando…" : "Consultar"}</Button>
@@ -39,7 +69,7 @@ export default function Page() {
 
       {buscado && (
         <>
-          <div className="flex gap-6 text-sm mb-2 no-print">
+          <div className="flex gap-6 text-sm mb-2">
             <span className="text-green-700 font-semibold">Entradas totales: {totales.entradas}</span>
             <span className="text-red-600 font-semibold">Salidas totales: {totales.salidas}</span>
           </div>
