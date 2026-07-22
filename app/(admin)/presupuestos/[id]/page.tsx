@@ -130,6 +130,7 @@ function PrintPortal({ pres, empresa }: { pres: Presupuesto; empresa: ReturnType
   const printStyle = `
     @media print {
       @page { size: A4 portrait; margin: 15mm 12mm; }
+      html, body { background: #fff !important; }
       body > *:not(#print-portal-pres) { display: none !important; }
       #print-portal-pres { display: block !important; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

@@ -135,6 +135,7 @@ function PrintPortal({ pres, empresa }: { pres: PresPortal; empresa: EmpresaData
   const printStyle = `
     @media print {
       @page { size: A4 portrait; margin: 15mm 12mm; }
+      html, body { background: #fff !important; }
       body > *:not(#print-portal-portal-pres) { display: none !important; }
       #print-portal-portal-pres { display: block !important; }
       * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
