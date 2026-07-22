@@ -46,12 +46,12 @@ export default async function DashboardPage() {
       include: { categoria: { select: { nombre: true } } },
     }),
     prisma.ordenTrabajo.findMany({
-      where: { ...tecnicoFilter, estado: "ENTREGADO" },
+      where: { ...tecnicoFilter, estado: "ENTREGADO", ...(isTecnico ? { ubicacionActual: "TALLER" } : {}) },
       orderBy: { fechaCierre: "asc" },
       include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { nombre: true } } },
     }),
     prisma.ordenTrabajo.findMany({
-      where: { ...tecnicoFilter, estado: { not: "ENTREGADO" } },
+      where: { ...tecnicoFilter, estado: { not: "ENTREGADO" }, ...(isTecnico ? { ubicacionActual: "TALLER" } : {}) },
       orderBy: { fechaIngreso: "asc" },
       include: { cliente: { select: { nombre: true } }, marca: { select: { nombre: true } }, tecnico: { select: { nombre: true } } },
     }),
