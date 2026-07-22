@@ -148,18 +148,6 @@ export default function OrdenDetailPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  // Interceptar botón atrás del navegador cuando hay cambios sin guardar
-  useEffect(() => {
-    const handler = (e: PopStateEvent) => {
-      if (!isDirty) return;
-      e.preventDefault();
-      window.history.pushState(null, "", window.location.href);
-      setConfirmSalir(true);
-    };
-    window.history.pushState(null, "", window.location.href);
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
-  }, [isDirty]);
 
   async function buscarRepuesto(q: string) {
     setRepuestoSearch(q);
