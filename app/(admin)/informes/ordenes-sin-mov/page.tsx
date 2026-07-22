@@ -38,7 +38,7 @@ export default function Page() {
             <div key={i} className={`grid grid-cols-6 px-3 py-2 border-t text-xs items-center ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
               <div className="font-mono font-bold">{r.numero}</div>
               <div>{r.cliente}</div>
-              <div>{getEstadoOrden(r.estado)}</div>
+              <div>{getEstadoOrden(r.estado)?.label ?? r.estado}</div>
               <div>{r.tecnico}</div>
               <div className="text-center">{formatDate(r.ultimoMovimiento)}</div>
               <div className={`text-center font-bold ${r.diasSinMovimiento > 14 ? "text-red-600" : "text-orange-500"}`}>{r.diasSinMovimiento}</div>

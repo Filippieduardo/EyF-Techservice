@@ -42,7 +42,7 @@ export default function Page() {
             <div key={i} className={`grid grid-cols-5 px-3 py-2 border-t text-xs ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
               <div className="font-mono font-bold">{r.numero}</div>
               <div>{r.cliente}</div>
-              <div>{getEstadoOrden(r.estado)}</div>
+              <div>{getEstadoOrden(r.estado)?.label ?? r.estado}</div>
               <div>{r.tecnico}</div>
               <div>{formatDate(r.fechaIngreso)}</div>
             </div>
