@@ -120,11 +120,11 @@ function PrintPortal({ pres, empresa }: { pres: Presupuesto; empresa: ReturnType
     thCell: { background: "#e8e8e8", fontWeight: "bold", padding: "5px 8px", border: "1px solid #bbb", fontSize: "8.5pt" },
     tdCell: { padding: "4px 8px", border: "none", borderBottom: "1px solid #e0e0e0" },
     // ── Pie ───────────────────────────────────
-    footerTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", marginTop: 0 },
-    footerLeft: { padding: "8px 10px", verticalAlign: "top", border: "none", borderRight: "1px solid #000", width: "55%", fontSize: "9pt" },
-    footerRight: { padding: "4px 0", border: "none", width: "45%", fontSize: "9.5pt" },
-    footerRow: { display: "flex", justifyContent: "space-between", padding: "2px 10px", borderBottom: "1px solid #e8e8e8" } as React.CSSProperties,
-    footerTotal: { display: "flex", justifyContent: "space-between", padding: "5px 10px", fontWeight: "bold", fontSize: "11pt", background: "#f0f0f0" } as React.CSSProperties,
+    footerTable: { width: "100%", borderCollapse: "collapse", borderTop: "1px solid #000", marginTop: 0, backgroundColor: "#fff" },
+    footerLeft: { padding: "8px 10px", verticalAlign: "top", border: "none", borderRight: "1px solid #000", width: "55%", fontSize: "9pt", backgroundColor: "#fff" },
+    footerRight: { padding: "4px 0", border: "none", width: "45%", fontSize: "9.5pt", backgroundColor: "#fff" },
+    footerRow: { display: "flex", justifyContent: "space-between", padding: "2px 10px", borderBottom: "1px solid #e8e8e8", backgroundColor: "#fff" } as React.CSSProperties,
+    footerTotal: { display: "flex", justifyContent: "space-between", padding: "5px 10px", fontWeight: "bold", fontSize: "11pt", backgroundColor: "#f0f0f0" } as React.CSSProperties,
   };
 
   const printStyle = `
