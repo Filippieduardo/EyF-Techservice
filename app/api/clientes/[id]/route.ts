@@ -32,9 +32,10 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     prisma.$queryRawUnsafe<any[]>(`SELECT * FROM "Presupuesto" WHERE "clienteId" = $1 ORDER BY fecha DESC LIMIT 5`, id),
   ]);
 
+  const { portalPassword: _pw, ...safeCliente } = cliente;
   return NextResponse.json({
-    ...cliente,
-    tienePasswordPortal: !!cliente.portalPassword,
+    ...safeCliente,
+    tienePasswordPortal: !!_pw,
     ordenes: ordenes.map((o: any) => ({ ...o, marca: o.marcaNombre ? { nombre: o.marcaNombre } : null })),
     presupuestos,
   });
