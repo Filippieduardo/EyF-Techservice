@@ -86,6 +86,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const data = repuestoSchema.parse(body);
 
+  const userId = (session.user as any).id as string;
+
   const repuesto = await prisma.repuesto.create({
     data: {
       codigoInterno: data.codigoInterno || null,
@@ -99,6 +101,20 @@ export async function POST(req: NextRequest) {
       precioVenta: data.precioVenta,
     },
   });
+
+  if (data.stockActual > 0) {
+    await prisma.movimientoStock.create({
+      data: {
+        repuestoId: repuesto.id,
+        tipo: "ENTRADA",
+        cantidad: data.stockActual,
+        precioUnitario: data.precioCosto || null,
+        referencia: "Stock inicial",
+        notas: "Carga inicial al crear repuesto",
+        userId,
+      },
+    });
+  }
 
   return NextResponse.json(repuesto, { status: 201 });
 }

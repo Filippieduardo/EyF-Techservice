@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate, formatCurrency } from "@/lib/constants";
 
-interface Row { fecha: string; tipo: string; descripcion: string; numeroParte: string | null; categoria: string; cantidad: number; precioUnitario: number; total: number; usuario: string; notas: string | null; }
+interface Row { fecha: string; tipo: string; descripcion: string; numeroParte: string | null; categoria: string; cantidad: number; precioVenta: number; precioUnitario: number; total: number; usuario: string; notas: string | null; }
 
 const mesAtras = () => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d.toISOString().split("T")[0]; };
 const hoy = () => new Date().toISOString().split("T")[0];
@@ -35,25 +35,28 @@ export default function Page() {
   const printTable = (
     <table className="data">
       <thead><tr>
-        <th className="center">Fecha</th><th>Tipo</th><th>Repuesto</th><th>Categoría</th><th className="center">Cant.</th><th className="right">P.Unit.</th><th className="right">Total</th>
+        <th className="center">Fecha</th><th>Tipo</th><th>N° Parte</th><th>Repuesto</th><th>Categoría</th><th className="center">Cant.</th><th className="right">P. Venta</th><th className="right">P.Unit.</th><th className="right">Total</th>
       </tr></thead>
       <tbody>
         {rows.map((r, i) => (
           <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
             <td className="center">{formatDate(r.fecha)}</td>
             <td style={{ fontWeight: "bold", color: r.tipo === "ENTRADA" ? "#166534" : r.tipo === "SALIDA" ? "#991b1b" : "#9a3412" }}>{r.tipo}</td>
-            <td>{r.descripcion}{r.numeroParte ? ` · ${r.numeroParte}` : ""}</td>
+            <td style={{ fontFamily: "monospace", fontWeight: "bold" }}>{r.numeroParte ?? "—"}</td>
+            <td>{r.descripcion}</td>
             <td>{r.categoria}</td>
             <td className="center">{r.cantidad}</td>
+            <td className="right">{formatCurrency(r.precioVenta)}</td>
             <td className="right">{formatCurrency(r.precioUnitario)}</td>
             <td className="right">{formatCurrency(r.total)}</td>
           </tr>
         ))}
       </tbody>
       <tfoot><tr>
-        <td colSpan={4}>TOTAL</td>
+        <td colSpan={5}>TOTAL</td>
         <td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td>
-        <td />
+        <td className="right">{formatCurrency(rows.reduce((s, r) => s + Number(r.precioVenta) * r.cantidad, 0))}</td>
+        <td className="right">{formatCurrency(rows.reduce((s, r) => s + Number(r.precioUnitario) * r.cantidad, 0))}</td>
         <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.total, 0))}</td>
       </tr></tfoot>
     </table>
@@ -74,20 +77,31 @@ export default function Page() {
             <span className="text-red-600 font-semibold">Salidas totales: {totales.salidas}</span>
           </div>
           <div className="border rounded overflow-hidden text-xs overflow-x-auto">
-            <div className="grid grid-cols-7 bg-gray-100 font-semibold text-gray-600 px-3 py-2 min-w-[700px]">
-              <div>Fecha</div><div>Tipo</div><div className="col-span-2">Repuesto</div><div className="text-center">Cant.</div><div className="text-right">P. Unit.</div><div className="text-right">Total</div>
+            <div className="grid grid-cols-9 bg-gray-100 font-semibold text-gray-600 px-3 py-2 min-w-[900px]">
+              <div>Fecha</div><div>Tipo</div><div>N° Parte</div><div className="col-span-2">Repuesto</div><div className="text-center">Cant.</div><div className="text-right">P. Venta</div><div className="text-right">P. Costo</div><div className="text-right">Total</div>
             </div>
             {rows.map((r, i) => (
-              <div key={i} className={`grid grid-cols-7 px-3 py-1.5 border-t items-center min-w-[700px] ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
+              <div key={i} className={`grid grid-cols-9 px-3 py-1.5 border-t items-center min-w-[900px] ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
                 <div>{formatDate(r.fecha)}</div>
                 <div className={TIPO_COLOR[r.tipo] ?? ""}>{r.tipo}</div>
-                <div className="col-span-2">{r.descripcion}{r.numeroParte ? <span className="text-gray-400"> · {r.numeroParte}</span> : ""}</div>
+                <div className="font-mono font-bold">{r.numeroParte ?? "—"}</div>
+                <div className="col-span-2">{r.descripcion}</div>
                 <div className="text-center">{r.cantidad}</div>
+                <div className="text-right text-green-700 font-semibold">{formatCurrency(Number(r.precioVenta))}</div>
                 <div className="text-right">{formatCurrency(r.precioUnitario)}</div>
                 <div className="text-right">{formatCurrency(r.total)}</div>
               </div>
             ))}
             {rows.length === 0 && <div className="px-3 py-4 text-center text-gray-400">Sin movimientos en el período</div>}
+            {rows.length > 0 && (
+              <div className="grid grid-cols-9 px-3 py-2 border-t bg-gray-100 font-bold text-xs min-w-[900px]">
+                <div className="col-span-5">TOTAL</div>
+                <div className="text-center">{rows.reduce((s, r) => s + r.cantidad, 0)}</div>
+                <div className="text-right text-green-700">{formatCurrency(rows.reduce((s, r) => s + Number(r.precioVenta) * r.cantidad, 0))}</div>
+                <div className="text-right">{formatCurrency(rows.reduce((s, r) => s + Number(r.precioUnitario) * r.cantidad, 0))}</div>
+                <div className="text-right">{formatCurrency(rows.reduce((s, r) => s + r.total, 0))}</div>
+              </div>
+            )}
           </div>
         </>
       )}
