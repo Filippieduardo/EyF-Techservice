@@ -26,12 +26,12 @@ export async function GET(req: NextRequest) {
   const whereBase: any = {
     fechaIngreso: { gte: fechaDesde, lte: fechaHasta },
     costoTecnico: { not: null },
+    estado: "TERMINADO",
   };
 
-  // Técnico solo ve sus órdenes con estado TERMINADO
+  // Técnico solo ve sus propias órdenes
   if (role === "TECNICO") {
     whereBase.tecnicoId = userId;
-    whereBase.estado = "TERMINADO";
   }
 
   const raw = await prisma.ordenTrabajo.findMany({
@@ -39,25 +39,18 @@ export async function GET(req: NextRequest) {
     include: {
       cliente: { select: { nombre: true } },
       marca:   { select: { nombre: true } },
-      tecnico: { select: { nombre: true } },
+      tecnico: { select: { id: true, nombre: true, role: true } },
       historial: { select: { estado: true } },
     },
     orderBy: { fechaIngreso: "asc" },
   });
 
-  // Filtrar costoTecnico > 0 en JS para evitar quirks de Prisma 7
-  let ordenes = (raw as any[]).filter((o) => Number(o.costoTecnico) > 0);
-
-  // Técnico: excluir órdenes que tengan RMA, CANCELADO o NO_REPARABLE en su historial
-  if (role === "TECNICO") {
-    const estadosExcluidos = new Set(["RMA", "CANCELADO", "NO_REPARABLE"]);
-    ordenes = ordenes.filter((o) =>
-      !(o.historial as any[]).some((h) => estadosExcluidos.has(h.estado))
-    );
-  }
-
-  // Quitar historial del resultado final
-  ordenes = ordenes.map(({ historial: _, ...rest }) => rest);
+  // Filtrar costoTecnico > 0 y excluir órdenes con RMA/CANCELADO/NO_REPARABLE en historial
+  const estadosExcluidos = new Set(["RMA", "CANCELADO", "NO_REPARABLE"]);
+  const ordenes = (raw as any[])
+    .filter((o) => Number(o.costoTecnico) > 0)
+    .filter((o) => !(o.historial as any[]).some((h: any) => estadosExcluidos.has(h.estado)))
+    .map(({ historial: _, ...rest }) => rest);
 
   const empresa = await prisma.empresa.findFirst();
 
