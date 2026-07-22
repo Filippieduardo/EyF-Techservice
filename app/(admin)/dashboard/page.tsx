@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ClipboardList, Users, Package, AlertTriangle,
   CheckCircle2, Clock, TrendingUp, Wrench,
@@ -228,19 +229,20 @@ export default async function DashboardPage() {
         </div>
 
         <div className="space-y-4">
-          <StockCard title="Stock Bajo" items={stockBajo} emptyMsg="✓ Todo el stock está OK" countColor="text-red-600" />
-          <StockCard title="Stock Cero" items={stockCero} emptyMsg="✓ Sin repuestos en cero" countColor="text-red-700" />
+          <StockCard title="Stock Bajo" items={stockBajo} emptyMsg="✓ Todo el stock está OK" countColor="text-red-600" isTecnico={isTecnico} />
+          <StockCard title="Stock Cero" items={stockCero} emptyMsg="✓ Sin repuestos en cero" countColor="text-red-700" isTecnico={isTecnico} />
         </div>
       </div>
     </div>
   );
 }
 
-function StockCard({ title, items, emptyMsg, countColor }: {
+function StockCard({ title, items, emptyMsg, countColor, isTecnico }: {
   title: string;
   items: any[];
   emptyMsg: string;
   countColor: string;
+  isTecnico: boolean;
 }) {
   return (
     <Card>
@@ -269,9 +271,13 @@ function StockCard({ title, items, emptyMsg, countColor }: {
           </div>
         )}
         <div className="px-3 py-2 border-t bg-muted/20 flex items-center justify-between">
-          <Link href="/repuestos" className="text-xs text-primary hover:underline font-medium">
-            Gestionar repuestos →
-          </Link>
+          {isTecnico ? (
+            <Button size="sm" disabled className="text-xs">Gestionar repuestos</Button>
+          ) : (
+            <Link href="/repuestos">
+              <Button size="sm" className="text-xs">Gestionar repuestos</Button>
+            </Link>
+          )}
           {items.length > 0 && (
             <span className="text-xs text-muted-foreground">{items.length} ítems</span>
           )}
