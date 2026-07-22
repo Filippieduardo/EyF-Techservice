@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const updateSchema = z.object({
   nombre: z.string().min(1).optional(),
@@ -61,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (data.dniCuit      !== undefined) { sets.push(`"dniCuit" = $${i++}`);         vals.push(data.dniCuit || null); }
   if (data.direccion    !== undefined) { sets.push(`"direccion" = $${i++}`);       vals.push(data.direccion || null); }
   if (data.activo       !== undefined) { sets.push(`"activo" = $${i++}`);          vals.push(data.activo); }
-  if (data.portalPassword)             { sets.push(`"portalPassword" = $${i++}`);  vals.push(data.portalPassword); }
+  if (data.portalPassword)             { const h = await bcrypt.hash(data.portalPassword, 10); sets.push(`"portalPassword" = $${i++}`);  vals.push(h); }
 
   vals.push(id);
   await prisma.$executeRawUnsafe(
