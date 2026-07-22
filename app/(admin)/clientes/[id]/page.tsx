@@ -90,7 +90,7 @@ export default function ClienteDetailPage() {
       condicionIva: data.condicionIva ?? "CONS. FINAL",
       dniCuit: data.dniCuit ?? "",
       direccion: data.direccion ?? "",
-      portalPassword: "",
+      portalPassword: data.portalPassword ?? "",
     });
   }
 
