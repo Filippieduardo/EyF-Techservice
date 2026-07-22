@@ -345,7 +345,7 @@ if (loading) return <div className="text-center py-12 text-gray-400">Cargando...
             <h1 className="text-2xl font-bold">Mis Equipos</h1>
             <p className="text-gray-500 text-sm">Consultá el estado de tus equipos y presupuestos</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => signOut({ callbackUrl: "/portal/login" })}>
+          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-2" onClick={() => signOut({ callbackUrl: "/portal/login" })}>
             <LogOut className="h-4 w-4" />Salir
           </Button>
         </div>
