@@ -25,7 +25,7 @@ const navItems = [
 ];
 
 const informesItems = [
-  { href: "/ordenes-pagar",                label: "Total Órdenes a Pagar",     icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
+  { href: "/ordenes-pagar",                label: "Total Órdenes a Cobrar",     icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
   { href: "/stock-bajo",                   label: "Repuestos Stock Bajo",       icon: AlertTriangle,   roles: ["ADMIN", "TECNICO"] },
   { href: "/consulta-stock",               label: "Consulta de Stock",          icon: BarChart2,       roles: ["ADMIN", "TECNICO"] },
   { href: "/informes/ordenes-estado",      label: "Órdenes por Estado",         icon: ClipboardList,   roles: ["ADMIN", "TECNICO"] },
