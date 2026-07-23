@@ -78,6 +78,7 @@ export default function OrdenDetailPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [confirmUbicacion, setConfirmUbicacion] = useState(false);
   const [confirmSalir, setConfirmSalir] = useState(false);
+  const [modalPresupPendiente, setModalPresupPendiente] = useState(false);
   const [ubicacionCambiada, setUbicacionCambiada] = useState(false);
   const skipDirtyRef = useRef(true);
 
@@ -239,6 +240,13 @@ export default function OrdenDetailPage() {
 
   async function handleCambioEstado() {
     if (!estadoForm.estado) return;
+    const presupEstado = orden?.presupuesto?.estado;
+    const presupBloquea = orden?.presupuesto && (presupEstado === "PENDIENTE" || presupEstado === "NO_PRESUPUESTADO");
+    const estadosPermitidosConPresup = ["EN_DIAGNOSTICO", "SIN_DIAGNOSTICAR", "DIAGNOSTICADO"];
+    if (presupBloquea && !estadosPermitidosConPresup.includes(estadoForm.estado)) {
+      setModalPresupPendiente(true);
+      return;
+    }
     if (tecnicoBlocked) {
       toast.error("Necesitás un presupuesto generado para cambiar el estado");
       return;
@@ -311,7 +319,7 @@ export default function OrdenDetailPage() {
             >
               <FileText className="h-4 w-4 mr-1" />Presupuestar
             </Button>
-            <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else router.back(); }}>
+            <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else { router.refresh(); router.back(); } }}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Volver
             </Button>
           </div>
@@ -703,6 +711,20 @@ export default function OrdenDetailPage() {
       </AlertDialog>
 
       {/* Modal confirmar salir sin guardar */}
+      <AlertDialog open={modalPresupPendiente} onOpenChange={setModalPresupPendiente}>
+        <AlertDialogContent onKeyDown={(e) => { if (e.key === "Enter") setModalPresupPendiente(false); }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Presupuesto Pendiente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Orden de Trabajo con Presupuesto pendiente NO se puede modificar estado
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setModalPresupPendiente(false)}>Aceptar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirmSalir} onOpenChange={setConfirmSalir}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -713,7 +735,7 @@ export default function OrdenDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.back()}>Sí, salir</AlertDialogAction>
+            <AlertDialogAction onClick={() => { router.refresh(); router.back(); }}>Sí, salir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -71,12 +71,12 @@ function groupByMonth(ordenes: OrdenRow[]): MonthGroup[] {
     }));
 }
 
-function groupByPerson(ordenes: OrdenRow[], isAdmin: boolean): PersonGroup[] {
+function groupByPerson(ordenes: OrdenRow[], isAdmin: boolean, fallbackNombre?: string): PersonGroup[] {
   if (!isAdmin) {
     // Técnico: una sola sección con su nombre
     const months = groupByMonth(ordenes);
     const subtotal = months.reduce((s, g) => s + g.subtotal, 0);
-    const nombre = ordenes[0]?.tecnico?.nombre ?? "Sin asignar";
+    const nombre = ordenes[0]?.tecnico?.nombre ?? fallbackNombre ?? "Sin asignar";
     return [{ nombre, role: "TECNICO", months, subtotal }];
   }
   // Admin: agrupar por persona
@@ -120,7 +120,7 @@ export default function OrdenesPagarPage() {
     try {
       const r = await fetch(`/api/ordenes-pagar?desde=${desde}&hasta=${hasta}`);
       const data = await r.json();
-      const grps = groupByPerson(data.ordenes ?? [], isAdmin);
+      const grps = groupByPerson(data.ordenes ?? [], isAdmin, userName);
       setPersons(grps);
       setTotal(grps.reduce((s, g) => s + g.subtotal, 0));
       setEmpresa(data.empresa ?? null);
@@ -174,7 +174,7 @@ export default function OrdenesPagarPage() {
                 </div>
               </td>
               <td style={{ verticalAlign: "top", border: "none", textAlign: "right", padding: 0 }}>
-                <div style={{ fontSize: "13pt", fontWeight: "bold" }}>Total Órdenes a Pagar</div>
+                <div style={{ fontSize: "13pt", fontWeight: "bold" }}>Total Órdenes a Cobrar</div>
                 <div style={{ fontSize: "9pt", color: "#444" }}>{fmt(desde + "T00:00:00")} al {fmt(hasta + "T00:00:00")}</div>
                 <div style={{ fontSize: "9pt", color: "#444" }}>Usuario: {userName} ({userRole})</div>
               </td>
@@ -258,7 +258,7 @@ export default function OrdenesPagarPage() {
       <div className="p-4 md:p-6 space-y-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <DollarSign className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Total Órdenes a Pagar</h1>
+          <h1 className="text-2xl font-bold">Total Órdenes a Cobrar</h1>
         </div>
 
         <Card>
@@ -299,7 +299,7 @@ export default function OrdenesPagarPage() {
                 </div>
               </div>
               <div className="text-right text-sm">
-                <p className="font-semibold text-base">Total Órdenes a Pagar</p>
+                <p className="font-semibold text-base">Total Órdenes a Cobrar</p>
                 <p className="text-muted-foreground">{fmt(desde + "T00:00:00")} al {fmt(hasta + "T00:00:00")}</p>
                 <p className="text-xs text-muted-foreground mt-1">Usuario: <span className="font-medium">{userName}</span> ({userRole})</p>
               </div>
