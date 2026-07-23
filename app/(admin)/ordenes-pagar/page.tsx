@@ -133,6 +133,7 @@ export default function OrdenesPagarPage() {
 
   const userName = session?.user?.name ?? "";
   const userRole = (session?.user as any)?.role ?? "";
+  const tituloListado = isAdmin ? "Total Órdenes a Pagar" : "Total Órdenes a Cobrar";
   const totalOrdenes = persons?.reduce((s, p) => s + p.months.reduce((ms, m) => ms + m.ordenes.length, 0), 0) ?? 0;
 
   return (
@@ -174,7 +175,7 @@ export default function OrdenesPagarPage() {
                 </div>
               </td>
               <td style={{ verticalAlign: "top", border: "none", textAlign: "right", padding: 0 }}>
-                <div style={{ fontSize: "13pt", fontWeight: "bold" }}>Total Órdenes a Cobrar</div>
+                <div style={{ fontSize: "13pt", fontWeight: "bold" }}>{tituloListado}</div>
                 <div style={{ fontSize: "9pt", color: "#444" }}>{fmt(desde + "T00:00:00")} al {fmt(hasta + "T00:00:00")}</div>
                 <div style={{ fontSize: "9pt", color: "#444" }}>Usuario: {userName} ({userRole})</div>
               </td>
@@ -258,7 +259,7 @@ export default function OrdenesPagarPage() {
       <div className="p-4 md:p-6 space-y-4 max-w-5xl">
         <div className="flex items-center gap-3">
           <DollarSign className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Total Órdenes a Cobrar</h1>
+          <h1 className="text-2xl font-bold">{tituloListado}</h1>
         </div>
 
         <Card>
@@ -299,7 +300,7 @@ export default function OrdenesPagarPage() {
                 </div>
               </div>
               <div className="text-right text-sm">
-                <p className="font-semibold text-base">Total Órdenes a Cobrar</p>
+                <p className="font-semibold text-base">{tituloListado}</p>
                 <p className="text-muted-foreground">{fmt(desde + "T00:00:00")} al {fmt(hasta + "T00:00:00")}</p>
                 <p className="text-xs text-muted-foreground mt-1">Usuario: <span className="font-medium">{userName}</span> ({userRole})</p>
               </div>

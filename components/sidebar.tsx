@@ -25,7 +25,7 @@ const navItems = [
 ];
 
 const informesItems = [
-  { href: "/ordenes-pagar",                label: "Total Órdenes a Cobrar",     icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
+  { href: "/ordenes-pagar",                label: "Total Órdenes a Pagar",      labelTecnico: "Total Órdenes a Cobrar", icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
   { href: "/stock-bajo",                   label: "Repuestos Stock Bajo",       icon: AlertTriangle,   roles: ["ADMIN", "TECNICO"] },
   { href: "/consulta-stock",               label: "Consulta de Stock",          icon: BarChart2,       roles: ["ADMIN", "TECNICO"] },
   { href: "/informes/mis-ordenes-activas", label: "Mis Órdenes Activas",        icon: ListTodo,        roles: ["TECNICO"] },
@@ -125,11 +125,12 @@ function NavContent({ role, userName, pathname, onNav }: {
             {informesOpen && informesItems.filter(i => i.roles.includes(role)).map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              const label = (role === "TECNICO" && (item as any).labelTecnico) ? (item as any).labelTecnico : item.label;
               return (
                 <Link key={item.href} href={item.href} onClick={onNav}
                   className={linkClass(active)} style={linkStyle(active)}>
                   <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                  {item.label}
+                  {label}
                 </Link>
               );
             })}
