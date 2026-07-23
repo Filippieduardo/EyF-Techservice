@@ -63,7 +63,7 @@ export default function Page() {
         <div className="space-y-1"><Label>Hasta</Label><Input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="w-36" /></div>
         <div className="space-y-1">
           <Label>Agrupación</Label>
-          <Select value={agrupacion} onValueChange={setAgrupacion}>
+          <Select value={agrupacion} onValueChange={(v) => v && setAgrupacion(v)}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="mes">Por mes</SelectItem><SelectItem value="semana">Por semana</SelectItem></SelectContent>
           </Select>

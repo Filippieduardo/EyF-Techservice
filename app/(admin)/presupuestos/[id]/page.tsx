@@ -221,7 +221,7 @@ function PrintPortal({ pres, empresa }: { pres: Presupuesto; empresa: ReturnType
             {pres.orden && (
               <span>
                 <strong>Orden N°:</strong> {pres.orden.numero}
-                {pres.orden.tipoEquipo ? " · " + getTipoEquipo(pres.orden.tipoEquipo).label : ""}
+                {pres.orden.tipoEquipo ? " · " + getTipoEquipo(pres.orden.tipoEquipo) : ""}
                 {pres.orden.marca?.nombre ? " · " + pres.orden.marca.nombre : ""}
                 {pres.orden.modelo ? " " + pres.orden.modelo : ""}
                 {pres.orden.numeroSerie ? " (N/S: " + pres.orden.numeroSerie + ")" : ""}
@@ -492,7 +492,7 @@ export default function PresupuestoDetailPage() {
               Equipo de la orden:{" "}
               <Link href={`/ordenes/${pres.orden.id}`} className="font-mono font-bold text-blue-600 hover:underline">{pres.orden.numero}</Link>
             </p>
-            {pres.orden.tipoEquipo && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Tipo:</dt><dd className="font-medium">{getTipoEquipo(pres.orden.tipoEquipo).label}</dd></div>}
+            {pres.orden.tipoEquipo && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Tipo:</dt><dd className="font-medium">{getTipoEquipo(pres.orden.tipoEquipo)}</dd></div>}
             {(pres.orden.marca?.nombre || pres.orden.modelo) && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">Equipo:</dt><dd className="font-semibold">{[pres.orden.marca?.nombre, pres.orden.modelo].filter(Boolean).join(" — ")}</dd></div>}
             {pres.orden.numeroSerie && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0">N/S:</dt><dd>{pres.orden.numeroSerie}</dd></div>}
             {pres.orden.descripcionProblema && <div className="flex gap-2"><dt className="text-gray-500 w-28 flex-shrink-0 mt-0.5">Problema:</dt><dd className="italic">{pres.orden.descripcionProblema}</dd></div>}
