@@ -8,7 +8,7 @@ import {
   Package, LogOut, UserCog, Menu, X, Tag, Building2,
   BadgeDollarSign, AlertTriangle, BarChart2, ChevronDown, ChevronRight,
   Clock, PauseCircle, UserCheck, DollarSign, CheckCircle2,
-  FileQuestion, ArrowUpDown, TrendingUp, Wallet,
+  FileQuestion, ArrowUpDown, TrendingUp, Wallet, ListTodo, Activity,
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,8 @@ const informesItems = [
   { href: "/ordenes-pagar",                label: "Total Órdenes a Cobrar",     icon: BadgeDollarSign, roles: ["ADMIN", "TECNICO"] },
   { href: "/stock-bajo",                   label: "Repuestos Stock Bajo",       icon: AlertTriangle,   roles: ["ADMIN", "TECNICO"] },
   { href: "/consulta-stock",               label: "Consulta de Stock",          icon: BarChart2,       roles: ["ADMIN", "TECNICO"] },
+  { href: "/informes/mis-ordenes-activas", label: "Mis Órdenes Activas",        icon: ListTodo,        roles: ["TECNICO"] },
+  { href: "/informes/mi-productividad",   label: "Mi Productividad",           icon: Activity,        roles: ["TECNICO"] },
   { href: "/informes/ordenes-estado",      label: "Órdenes por Estado",         icon: ClipboardList,   roles: ["ADMIN", "TECNICO"] },
   { href: "/informes/tiempo-reparacion",   label: "Tiempo de Reparación",       icon: Clock,           roles: ["ADMIN"] },
   { href: "/informes/ordenes-sin-mov",     label: "Órdenes sin Movimiento",     icon: PauseCircle,     roles: ["ADMIN"] },
@@ -35,7 +37,7 @@ const informesItems = [
   { href: "/informes/facturacion",         label: "Facturación del Período",    icon: DollarSign,      roles: ["ADMIN"] },
   { href: "/informes/presup-aprobacion",   label: "Aprobación Presupuestos",    icon: CheckCircle2,    roles: ["ADMIN"] },
   { href: "/informes/ordenes-sin-presup",  label: "Órdenes sin Presupuesto",    icon: FileQuestion,    roles: ["ADMIN"] },
-  { href: "/informes/mov-stock",           label: "Movimientos de Stock",       icon: ArrowUpDown,     roles: ["ADMIN", "TECNICO"] },
+  { href: "/informes/mov-stock",           label: "Movimientos de Stock",       icon: ArrowUpDown,     roles: ["ADMIN"] },
   { href: "/informes/repuestos-top",       label: "Repuestos más Usados",       icon: TrendingUp,      roles: ["ADMIN", "TECNICO"] },
   { href: "/informes/valorizacion",        label: "Valorización de Stock",      icon: Wallet,          roles: ["ADMIN"] },
   { href: "/informes/clientes-frecuentes", label: "Clientes Frecuentes",        icon: Users,           roles: ["ADMIN"] },

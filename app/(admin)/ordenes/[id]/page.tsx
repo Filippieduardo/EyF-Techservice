@@ -311,7 +311,7 @@ export default function OrdenDetailPage() {
             >
               <FileText className="h-4 w-4 mr-1" />Presupuestar
             </Button>
-            <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else router.back(); }}>
+            <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else { router.refresh(); router.back(); } }}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Volver
             </Button>
           </div>
@@ -713,7 +713,7 @@ export default function OrdenDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.back()}>Sí, salir</AlertDialogAction>
+            <AlertDialogAction onClick={() => { router.refresh(); router.back(); }}>Sí, salir</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
