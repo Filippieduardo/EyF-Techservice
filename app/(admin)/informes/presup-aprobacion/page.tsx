@@ -47,12 +47,12 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr>
+      <tbody><tr className="total">
         <td>TOTAL</td>
         <td className="center">{total}</td>
         <td className="center">100%</td>
         <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.monto, 0))}</td>
-      </tr></tfoot>
+      </tr></tbody>
     </table>
   );
 

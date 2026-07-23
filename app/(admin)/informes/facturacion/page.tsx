@@ -48,11 +48,11 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr>
+      <tbody><tr className="total">
         <td>TOTAL</td>
         <td className="center">{totalOrdenes}</td>
         <td className="right">{formatCurrency(totalMonto)}</td>
-      </tr></tfoot>
+      </tr></tbody>
     </table>
   );
 

@@ -43,11 +43,11 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr>
+      <tbody><tr className="total">
         <td colSpan={5}>TOTAL</td>
         <td className="right">{formatCurrency(totales.costo)}</td>
         <td className="right">{formatCurrency(totales.venta)}</td>
-      </tr></tfoot>
+      </tr></tbody>
     </table>
   );
 

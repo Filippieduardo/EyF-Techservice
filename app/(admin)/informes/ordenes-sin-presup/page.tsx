@@ -44,7 +44,7 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan={5}>{rows.length} orden{rows.length !== 1 ? "es" : ""} encontrada{rows.length !== 1 ? "s" : ""}</td></tr></tfoot>
+      <tbody><tr className="total"><td colSpan={5}>{rows.length} orden{rows.length !== 1 ? "es" : ""} encontrada{rows.length !== 1 ? "s" : ""}</td></tr></tbody>
     </table>
   );
 

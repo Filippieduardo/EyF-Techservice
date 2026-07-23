@@ -46,12 +46,12 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      {rows.length > 0 && <tfoot><tr>
+      {rows.length > 0 && <tbody><tr className="total">
         <td>TOTAL</td>
         <td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td>
         <td className="center">{Math.round(rows.reduce((s, r) => s + r.promedioDias, 0) / rows.length)} días prom.</td>
         <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.monto, 0))}</td>
-      </tr></tfoot>}
+      </tr></tbody>}
     </table>
   );
 

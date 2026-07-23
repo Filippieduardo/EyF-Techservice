@@ -44,13 +44,13 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      {rows.length > 0 && <tfoot><tr>
+      {rows.length > 0 && <tbody><tr className="total">
         <td>TOTAL</td>
         <td className="center">{rows.reduce((s, r) => s + r.totalOrdenes, 0)}</td>
         <td className="center">{rows.reduce((s, r) => s + r.terminadas, 0)}</td>
         <td />
         <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.monto, 0))}</td>
-      </tr></tfoot>}
+      </tr></tbody>}
     </table>
   );
 

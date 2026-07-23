@@ -45,12 +45,12 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr>
+      <tbody><tr className="total">
         <td colSpan={3}>TOTAL</td>
         <td className="center">{rows.reduce((s, r) => s + r.cantidadOrdenes, 0)}</td>
         <td className="center">{rows.reduce((s, r) => s + r.ordenesTerminadas, 0)}</td>
         <td className="right">{formatCurrency(rows.reduce((s, r) => s + r.montoTotal, 0))}</td>
-      </tr></tfoot>
+      </tr></tbody>
     </table>
   );
 

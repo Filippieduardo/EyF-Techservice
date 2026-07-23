@@ -7,7 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Package, AlertTriangle, Settings } from "lucide-react";
+import { Plus, Search, Package, AlertTriangle, Settings, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
@@ -40,6 +41,7 @@ const emptyForm = {
 export default function RepuestosPage() {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
+  const router = useRouter();
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [q, setQ] = useState("");
@@ -107,6 +109,7 @@ export default function RepuestosPage() {
           <p className="text-gray-500 text-sm">{repuestos.length} repuestos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => router.back()} className="bg-blue-600 hover:bg-blue-700 text-white"><ArrowLeft className="h-4 w-4 mr-2" />Volver</Button>
 
           <Dialog open={buscarOpen} onOpenChange={setBuscarOpen}>
             <Button variant="outline" onClick={() => setBuscarOpen(true)}><Search className="h-4 w-4 mr-2" />Buscar Compatibles</Button>

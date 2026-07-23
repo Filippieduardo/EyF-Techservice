@@ -41,7 +41,8 @@ export function InformeLayout({ titulo, filtrosTexto, printTable, children }: Pr
           #print-informe table.data th { background: #e0e0e0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #print-informe .center { text-align: center; }
           #print-informe .right { text-align: right; }
-          #print-informe tfoot td { background: #e0e0e0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #print-informe tfoot { display: none; }
+          #print-informe tr.total td { background: #e0e0e0 !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #print-informe .alt td { background: #f7f7f7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #print-informe .warn td { background: #fff8e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #print-informe .danger td { background: #ffecec !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }

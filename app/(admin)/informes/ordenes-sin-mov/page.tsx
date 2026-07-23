@@ -41,7 +41,7 @@ export default function Page() {
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan={7}>{rows.length} órdenes sin movimiento — Rojo: +14 días · Amarillo: +7 días</td></tr></tfoot>
+      <tbody><tr className="total"><td colSpan={7}>{rows.length} órdenes sin movimiento — Rojo: +14 días · Amarillo: +7 días</td></tr></tbody>
     </table>
   );
 

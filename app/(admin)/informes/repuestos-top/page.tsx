@@ -30,20 +30,20 @@ export default function Page() {
   const printTable = (
     <table className="data">
       <thead><tr>
-        <th className="center">#</th><th>Repuesto</th><th>N° Parte</th><th>Categoría</th><th className="center">Unidades usadas</th>
+        <th className="center">#</th><th>N° Parte</th><th>Repuesto</th><th>Categoría</th><th className="center">Unidades usadas</th>
       </tr></thead>
       <tbody>
         {rows.map((r, i) => (
           <tr key={i} className={i % 2 === 1 ? "alt" : ""}>
             <td className="center" style={{ fontWeight: "bold", color: "#9ca3af" }}>{i + 1}</td>
+            <td style={{ fontFamily: "monospace", fontWeight: "bold" }}>{r.numeroParte ?? "—"}</td>
             <td style={{ fontWeight: "500" }}>{r.descripcion}</td>
-            <td style={{ color: "#6b7280", fontSize: "0.85em" }}>{r.numeroParte ?? "—"}</td>
             <td>{r.categoria}</td>
             <td className="center" style={{ fontWeight: "bold", color: "#1d4ed8" }}>{r.cantidad}</td>
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan={4}>TOTAL UNIDADES</td><td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td></tr></tfoot>
+      <tbody><tr className="total"><td colSpan={4}>TOTAL UNIDADES</td><td className="center">{rows.reduce((s, r) => s + r.cantidad, 0)}</td></tr></tbody>
     </table>
   );
 
@@ -57,17 +57,15 @@ export default function Page() {
 
       {buscado && (
         <div className="border rounded overflow-hidden text-sm">
-          <div className="grid grid-cols-5 bg-gray-100 font-semibold text-gray-600 text-xs px-3 py-2">
-            <div>#</div><div className="col-span-2">Repuesto</div><div>Categoría</div><div className="text-center">Unidades usadas</div>
+          <div className="grid bg-gray-100 font-semibold text-gray-600 text-xs px-3 py-2" style={{ gridTemplateColumns: "2rem 9rem 1fr 8rem 6rem" }}>
+            <div>#</div><div>N° Parte</div><div>Repuesto</div><div>Categoría</div><div className="text-center">Unidades</div>
           </div>
           {rows.map((r, i) => (
-            <div key={i} className={`grid grid-cols-5 px-3 py-2 border-t text-xs items-center ${i % 2 === 1 ? "bg-gray-50" : ""}`}>
+            <div key={i} className={`grid px-3 py-1.5 border-t text-xs items-center ${i % 2 === 1 ? "bg-gray-50" : ""}`} style={{ gridTemplateColumns: "2rem 9rem 1fr 8rem 6rem" }}>
               <div className="font-bold text-gray-400">{i + 1}</div>
-              <div className="col-span-2">
-                <div className="font-medium">{r.descripcion}</div>
-                {r.numeroParte && <div className="text-gray-400">{r.numeroParte}</div>}
-              </div>
-              <div className="text-gray-600">{r.categoria}</div>
+              <div className="font-mono font-bold truncate">{r.numeroParte ?? "—"}</div>
+              <div className="font-medium truncate">{r.descripcion}</div>
+              <div className="text-gray-600 truncate">{r.categoria}</div>
               <div className="text-center font-bold text-blue-700">{r.cantidad}</div>
             </div>
           ))}
