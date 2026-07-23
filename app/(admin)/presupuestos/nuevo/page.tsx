@@ -234,7 +234,7 @@ export default function NuevoPresupuestoPage() {
                 {ordenEquipo.tipoEquipo && (
                   <div className="flex gap-2">
                     <dt className="text-gray-500 w-28 flex-shrink-0">Tipo:</dt>
-                    <dd className="font-medium">{getTipoEquipo(ordenEquipo.tipoEquipo).label}</dd>
+                    <dd className="font-medium">{getTipoEquipo(ordenEquipo.tipoEquipo)}</dd>
                   </div>
                 )}
                 {(ordenEquipo.marca || ordenEquipo.modelo) && (
