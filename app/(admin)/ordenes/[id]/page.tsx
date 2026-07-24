@@ -80,6 +80,7 @@ export default function OrdenDetailPage() {
   const [confirmSalir, setConfirmSalir] = useState(false);
   const [modalPresupPendiente, setModalPresupPendiente] = useState(false);
   const [modalOrdenNoDiag, setModalOrdenNoDiag] = useState(false);
+  const [confirmEliminar, setConfirmEliminar] = useState(false);
   const [ubicacionCambiada, setUbicacionCambiada] = useState(false);
   const skipDirtyRef = useRef(true);
 
@@ -283,6 +284,18 @@ export default function OrdenDetailPage() {
     }
   }
 
+  async function handleEliminar() {
+    const res = await fetch(`/api/ordenes/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Orden eliminada");
+      router.refresh();
+      router.push("/ordenes");
+    } else {
+      toast.error("Error al eliminar la orden");
+    }
+    setConfirmEliminar(false);
+  }
+
   if (!orden) return <div className="p-6 text-gray-400">Cargando...</div>;
 
   const estadoActual = getEstadoOrden(orden.estado);
@@ -313,16 +326,23 @@ export default function OrdenDetailPage() {
             </Button>
           </div>
           <div className="flex gap-2 self-stretch justify-between">
-            <Button
-              size="sm"
-              disabled={!!orden.presupuesto}
-              onClick={() => {
-                if (orden.estado !== "DIAGNOSTICADO") { setModalOrdenNoDiag(true); return; }
-                router.push(`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`);
-              }}
-            >
-              <FileText className="h-4 w-4 mr-1" />Presupuestar
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={!!orden.presupuesto}
+                onClick={() => {
+                  if (orden.estado !== "DIAGNOSTICADO") { setModalOrdenNoDiag(true); return; }
+                  router.push(`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`);
+                }}
+              >
+                <FileText className="h-4 w-4 mr-1" />Presupuestar
+              </Button>
+              {isAdmin && (
+                <Button size="sm" variant="destructive" onClick={() => setConfirmEliminar(true)}>
+                  <Trash2 className="h-4 w-4 mr-1" />Eliminar
+                </Button>
+              )}
+            </div>
             <Button size="sm" onClick={() => { if (isDirty) setConfirmSalir(true); else { router.refresh(); router.back(); } }}>
               <ArrowLeft className="h-4 w-4 mr-1" /> Volver
             </Button>
@@ -715,6 +735,21 @@ export default function OrdenDetailPage() {
       </AlertDialog>
 
       {/* Modal confirmar salir sin guardar */}
+      <AlertDialog open={confirmEliminar} onOpenChange={setConfirmEliminar}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar esta orden de trabajo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es <strong>irreversible</strong>. Se eliminarán todos los datos asociados: historial de estados, repuestos utilizados, movimientos de stock y el presupuesto vinculado si existiera. El stock de los repuestos descontados será restaurado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={handleEliminar}>Sí, eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={modalOrdenNoDiag} onOpenChange={setModalOrdenNoDiag}>
         <AlertDialogContent onKeyDown={(e) => { if (e.key === "Enter") setModalOrdenNoDiag(false); }}>
           <AlertDialogHeader>
