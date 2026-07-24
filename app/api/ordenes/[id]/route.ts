@@ -151,3 +151,59 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   );
   return NextResponse.json(rows[0]);
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+    const { id } = await params;
+
+    // 1. Obtener repuestos usados con descontado=true para restaurar stock
+    const repuestosUsados = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT "repuestoId", cantidad FROM "OrdenRepuesto" WHERE "ordenId" = $1 AND descontado = true`,
+      id
+    );
+
+    // 2. Obtener presupuestoId antes de borrar
+    const ordenRows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT "presupuestoId" FROM "OrdenTrabajo" WHERE id = $1`,
+      id
+    );
+    const presupuestoId = ordenRows[0]?.presupuestoId ?? null;
+
+    // 3. Restaurar stock de repuestos usados (SALIDA revertida)
+    for (const r of repuestosUsados) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE "Repuesto" SET "stockActual" = "stockActual" + $1 WHERE id = $2`,
+        r.cantidad, r.repuestoId
+      );
+    }
+
+    // 4. Eliminar MovimientoStock vinculados a la orden
+    await prisma.$executeRawUnsafe(`DELETE FROM "MovimientoStock" WHERE "ordenId" = $1`, id);
+
+    // 5. Eliminar HistorialEstado
+    await prisma.$executeRawUnsafe(`DELETE FROM "HistorialEstado" WHERE "ordenId" = $1`, id);
+
+    // 6. Limpiar presupuestoId en la orden (FK) para poder borrar el presupuesto luego
+    if (presupuestoId) {
+      await prisma.$executeRawUnsafe(`UPDATE "OrdenTrabajo" SET "presupuestoId" = NULL WHERE id = $1`, id);
+    }
+
+    // 7. Eliminar OrdenTrabajo (cascadea OrdenRepuesto por onDelete: Cascade)
+    await prisma.$executeRawUnsafe(`DELETE FROM "OrdenTrabajo" WHERE id = $1`, id);
+
+    // 8. Eliminar Presupuesto y sus items (PresupuestoItem cascadea desde Presupuesto)
+    if (presupuestoId) {
+      await prisma.$executeRawUnsafe(`DELETE FROM "PresupuestoItem" WHERE "presupuestoId" = $1`, presupuestoId);
+      await prisma.$executeRawUnsafe(`DELETE FROM "Presupuesto" WHERE id = $1`, presupuestoId);
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error("DELETE orden error:", e);
+    return NextResponse.json({ error: e.message ?? "Error interno" }, { status: 500 });
+  }
+}
