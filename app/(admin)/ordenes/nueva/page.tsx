@@ -67,7 +67,7 @@ export default function NuevaOrdenPage() {
     fetch("/api/clientes").then(r => r.ok ? r.json() : []).then((cs: any[]) => {
       setClientes(cs);
     });
-    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => u.role === "TECNICO" && u.activo)));
+    fetch("/api/usuarios").then(r => r.ok ? r.json() : []).then((us: any[]) => setTecnicos(us.filter(u => (u.role === "TECNICO" || u.role === "ADMIN") && u.activo)));
     // Si viene con clienteId preseleccionado, cargar sus datos directamente
     if (preClienteId) {
       fetch(`/api/clientes/${preClienteId}`).then(r => r.ok ? r.json() : null).then((c: any) => {

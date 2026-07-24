@@ -153,7 +153,7 @@ function drawCopy(doc: any, orden: any, empresa: any, offsetY: number, tipo: "CL
       "La presente garantía dejará de tener validez cuando:\n" +
       "- Personal no autorizado haya revisado o reparado el equipo luego de ser retirado.  - Si hubiera dañado, alterado o retirado la faja de garantía.\n";
     const parte2 = "LA PRESENTE GARANTÍA CADUCA A LOS 30 (treinta) DÍAS DE RETIRADO EL EQUIPAMIENTO\n";
-    const parte3 = "MUY IMPORTANTE: Si el equipo no fuese retirado dentro de los ";
+    const parte3 = " MUY IMPORTANTE: Si el equipo no fuese retirado dentro de los ";
     const parte4 = "90 (Noventa) días";
     const parte5 =
       " del Ingreso, se considerará abandonado, facultando a EyF TechService a disponer del mismo, desistiendo EL CLIENTE de realizar cualquier tipo de reclamo o solicitar indemnización alguna.\n" +
