@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, getTipoEquipo } from "@/lib/constants";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface Cliente {
   id: string;
@@ -48,6 +49,8 @@ export default function NuevoPresupuestoPage() {
   const [ordenEquipo, setOrdenEquipo] = useState<{ tipoEquipo?: string; marca?: string; modelo?: string; numeroSerie?: string; descripcionProblema?: string } | null>(null);
   const [validezDias, setValidezDias] = useState(5);
   const [descuento, setDescuento] = useState(0);
+  const [ordenEstado, setOrdenEstado] = useState<string>("");
+  const [modalOrdenNoDiag, setModalOrdenNoDiag] = useState(false);
   const [descuentoEditing, setDescuentoEditing] = useState(false);
   const [notas, setNotas] = useState("");
   const [observacionesCliente, setObservacionesCliente] = useState("");
@@ -81,6 +84,7 @@ export default function NuevoPresupuestoPage() {
             const obs = data.observacionesCliente ?? "";
             setObservacionesCliente(obs);
             obsClienteOriginalRef.current = obs;
+            setOrdenEstado(data.estado ?? "");
             setOrdenEquipo({
               tipoEquipo: data.tipoEquipo ?? undefined,
               marca: data.marca?.nombre ?? undefined,
@@ -113,6 +117,7 @@ export default function NuevoPresupuestoPage() {
 
   async function handleGuardar() {
     if (!clienteId) { toast.error("Seleccionar cliente"); return; }
+    if (ordenId && ordenEstado !== "DIAGNOSTICADO") { setModalOrdenNoDiag(true); return; }
     if (!tieneItems) { toast.error("Agregar al menos un ítem"); return; }
     const itemsInvalidos = items.filter(i => i.descripcion.trim() && i.precioUnitario <= 0);
     if (itemsInvalidos.length > 0) { toast.error("Todos los ítems deben tener precio"); return; }
@@ -374,6 +379,20 @@ export default function NuevoPresupuestoPage() {
           </CardContent>
         </Card>
       </form>
+
+      <AlertDialog open={modalOrdenNoDiag} onOpenChange={setModalOrdenNoDiag}>
+        <AlertDialogContent onKeyDown={(e) => { if (e.key === "Enter") setModalOrdenNoDiag(false); }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Orden no diagnosticada</AlertDialogTitle>
+            <AlertDialogDescription>
+              No se puede grabar el presupuesto. La Orden de Trabajo debe estar en estado <strong>DIAGNOSTICADO</strong> para poder generar un presupuesto.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setModalOrdenNoDiag(false)}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
