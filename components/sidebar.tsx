@@ -36,6 +36,7 @@ const informesItems = [
   { href: "/informes/productividad",       label: "Productividad por Técnico",  icon: UserCheck,       roles: ["ADMIN"] },
   { href: "/informes/facturacion",         label: "Facturación del Período",    icon: DollarSign,      roles: ["ADMIN"] },
   { href: "/informes/presup-aprobacion",   label: "Aprobación Presupuestos",    icon: CheckCircle2,    roles: ["ADMIN"] },
+  { href: "/informes/presupuestos-estado", label: "Presupuestos por Estado",    icon: FileText,        roles: ["ADMIN"] },
   { href: "/informes/ordenes-sin-presup",  label: "Órdenes sin Presupuesto",    icon: FileQuestion,    roles: ["ADMIN"] },
   { href: "/informes/mov-stock",           label: "Movimientos de Stock",       icon: ArrowUpDown,     roles: ["ADMIN"] },
   { href: "/informes/repuestos-top",       label: "Repuestos más Usados",       icon: TrendingUp,      roles: ["ADMIN", "TECNICO"] },
