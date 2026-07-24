@@ -79,6 +79,7 @@ export default function OrdenDetailPage() {
   const [confirmUbicacion, setConfirmUbicacion] = useState(false);
   const [confirmSalir, setConfirmSalir] = useState(false);
   const [modalPresupPendiente, setModalPresupPendiente] = useState(false);
+  const [modalOrdenNoDiag, setModalOrdenNoDiag] = useState(false);
   const [ubicacionCambiada, setUbicacionCambiada] = useState(false);
   const skipDirtyRef = useRef(true);
 
@@ -315,7 +316,10 @@ export default function OrdenDetailPage() {
             <Button
               size="sm"
               disabled={!!orden.presupuesto}
-              onClick={() => router.push(`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`)}
+              onClick={() => {
+                if (orden.estado !== "DIAGNOSTICADO") { setModalOrdenNoDiag(true); return; }
+                router.push(`/presupuestos/nuevo?ordenId=${id}&clienteId=${orden.cliente.id}`);
+              }}
             >
               <FileText className="h-4 w-4 mr-1" />Presupuestar
             </Button>
@@ -711,6 +715,20 @@ export default function OrdenDetailPage() {
       </AlertDialog>
 
       {/* Modal confirmar salir sin guardar */}
+      <AlertDialog open={modalOrdenNoDiag} onOpenChange={setModalOrdenNoDiag}>
+        <AlertDialogContent onKeyDown={(e) => { if (e.key === "Enter") setModalOrdenNoDiag(false); }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Orden no diagnosticada</AlertDialogTitle>
+            <AlertDialogDescription>
+              No se puede generar presupuesto. La Orden de Trabajo debe estar en estado <strong>DIAGNOSTICADO</strong> para poder presupuestar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setModalOrdenNoDiag(false)}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={modalPresupPendiente} onOpenChange={setModalPresupPendiente}>
         <AlertDialogContent onKeyDown={(e) => { if (e.key === "Enter") setModalPresupPendiente(false); }}>
           <AlertDialogHeader>
