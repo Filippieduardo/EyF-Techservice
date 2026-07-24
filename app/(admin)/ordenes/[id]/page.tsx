@@ -82,6 +82,10 @@ export default function OrdenDetailPage() {
   const [modalOrdenNoDiag, setModalOrdenNoDiag] = useState(false);
   const [confirmEliminar, setConfirmEliminar] = useState(false);
   const [ubicacionCambiada, setUbicacionCambiada] = useState(false);
+  const [modalConfirmDiag, setModalConfirmDiag] = useState(false);
+  const [diagConfirmado, setDiagConfirmado] = useState(false);
+  const diagRef = useRef<HTMLTextAreaElement>(null);
+  const diagPrevRef = useRef<string>("");
   const skipDirtyRef = useRef(true);
 
   async function fetchOrden() {
@@ -107,6 +111,8 @@ export default function OrdenDetailPage() {
       fechaEnvio: data.fechaEnvio ? data.fechaEnvio.split("T")[0] : "",
       ubicacionActual: data.ubicacionActual ?? "LOCAL",
     });
+    diagPrevRef.current = data.diagnostico ?? "";
+    setDiagConfirmado(false);
     setEstadoForm({ estado: data.estado, nota: "", fechaEntrega: "" });
     setIsDirty(false);
     setUbicacionCambiada(false);
@@ -303,6 +309,8 @@ export default function OrdenDetailPage() {
   const presupuestoAceptado = orden.presupuesto?.estado === "APROBADO";
   // TECNICO bloqueado en secciones Estado/Asignación/Repuestos si NO hay presupuesto generado
   const tecnicoBlocked = !isAdmin && !orden.presupuesto && !orden.presupuestoId;
+  // Estados permitidos cuando el técnico confirma diagnóstico
+  const ESTADOS_TECNICO_DIAG = ["EN_DIAGNOSTICO", "DIAGNOSTICADO", "ESPERANDO_REPUESTO", "NO_REPARABLE"];
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-5xl">
@@ -430,11 +438,25 @@ export default function OrdenDetailPage() {
             <CardContent className="space-y-3">
               <div className="space-y-1">
                 <Label>Problema Reportado</Label>
-                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value.toUpperCase() })} rows={2} />
+                <Textarea value={form.descripcionProblema} onChange={e => setForm({ ...form, descripcionProblema: e.target.value.toUpperCase() })} rows={2} disabled={tecnicoBlocked} />
               </div>
               <div className="space-y-1">
                 <Label>Diagnóstico</Label>
-                <Textarea value={form.diagnostico} onChange={e => setForm({ ...form, diagnostico: e.target.value.toUpperCase() })} rows={2} placeholder="Diagnóstico técnico..." />
+                <Textarea
+                  ref={diagRef}
+                  value={form.diagnostico}
+                  onChange={e => setForm({ ...form, diagnostico: e.target.value.toUpperCase() })}
+                  rows={2}
+                  placeholder="Diagnóstico técnico..."
+                  onBlur={() => {
+                    if (tecnicoBlocked && form.diagnostico?.trim() && form.diagnostico.trim() !== diagPrevRef.current.trim()) {
+                      setModalConfirmDiag(true);
+                    }
+                  }}
+                />
+                {tecnicoBlocked && diagConfirmado && (
+                  <p className="text-amber-600 text-xs font-semibold">⚠️ Diagnóstico confirmado — recordá modificar el estado de la orden.</p>
+                )}
               </div>
               <div className="space-y-1">
                 <Label>Trabajo Realizado</Label>
@@ -504,11 +526,12 @@ export default function OrdenDetailPage() {
                     setTimeout(() => fechaEntregaRef.current?.focus(), 50);
                   }
                 }}
-                disabled={tecnicoBlocked}
+                disabled={tecnicoBlocked ? !diagConfirmado : false}
               >
                 <SelectTrigger><SelectValue>{getEstadoOrden(estadoForm.estado).label}</SelectValue></SelectTrigger>
                 <SelectContent>
-                  {ESTADOS_ORDEN.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                  {(tecnicoBlocked ? ESTADOS_ORDEN.filter(e => ESTADOS_TECNICO_DIAG.includes(e.value)) : ESTADOS_ORDEN)
+                    .map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               {estadoForm.estado === "ENTREGADO" && (
@@ -527,7 +550,7 @@ export default function OrdenDetailPage() {
                 </div>
               )}
               <Textarea value={form.notaEstado ?? ""} onChange={e => setForm({ ...form, notaEstado: e.target.value.toUpperCase() })} placeholder="Nota del cambio..." rows={2} disabled={tecnicoBlocked} />
-              <Button size="sm" onClick={handleCambioEstado} className="w-full" disabled={tecnicoBlocked}>Cambiar Estado</Button>
+              <Button size="sm" onClick={handleCambioEstado} className="w-full" disabled={tecnicoBlocked ? !diagConfirmado : false}>Cambiar Estado</Button>
             </CardContent>
           </Card>
 
@@ -735,6 +758,21 @@ export default function OrdenDetailPage() {
       </AlertDialog>
 
       {/* Modal confirmar salir sin guardar */}
+      <AlertDialog open={modalConfirmDiag} onOpenChange={(open) => { if (!open) { diagRef.current?.focus(); } setModalConfirmDiag(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar diagnóstico?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Confirmás el diagnóstico ingresado? Si confirmás, se habilitará el cambio de estado de la orden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setModalConfirmDiag(false); setTimeout(() => diagRef.current?.focus(), 50); }}>No, volver al campo</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { diagPrevRef.current = form.diagnostico?.trim() ?? ""; setDiagConfirmado(true); setModalConfirmDiag(false); }}>Sí, confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={confirmEliminar} onOpenChange={setConfirmEliminar}>
         <AlertDialogContent>
           <AlertDialogHeader>
